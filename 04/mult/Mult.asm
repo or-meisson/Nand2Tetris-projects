@@ -17,3 +17,49 @@
 // - You can implement any multiplication algorithm you want.
 
 // Put your code here.
+
+//put whats on RAM[0] in the D register
+@R0
+D=M
+
+//initialize RAM[2] to 0
+@R2
+M=0
+
+
+//set a variable i counting the mults to 0
+@i
+M=0
+
+(LOOP)
+    //check if i is equal to RAM[1]
+    @i
+    D=M
+    @R1
+    D=D-M
+    @END
+    D;JEQ
+
+    //add RAM[0] to R2
+    @R0
+    D=M
+    @R2
+    D=M+D
+    @R2
+    M=D
+
+    //i++
+    @i
+    M=M+1
+    D=M
+
+    @LOOP
+    0;JMP
+(END)
+    @END
+    0;JMP
+
+
+
+
+
