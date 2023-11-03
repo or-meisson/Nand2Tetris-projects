@@ -35,4 +35,78 @@
 // - Remind you to select 'no animation', and then test the program
 //   interactively by pressing and releasing some keyboard keys
 
-// Put your code here.
+(WHAT_TO_FILL)
+@SCREEN
+D=A
+@0
+M=D //PUT IN RAM[0] THE PIXEL NUMBER THAT NEEDS TO BE FILLED
+
+
+
+
+(LOOP)
+    @KBD
+    D=M
+
+    @PRESSED //BLACK
+    D;JNE
+
+    @NOT_PRESSED //WHITE
+    D;JEQ
+
+
+    @LOOP
+    0;JMP
+
+
+
+(PRESSED) //BLACK
+
+@1
+M=-1 //PUT IN RAM[1] WHAT NEEDS TO BE FILL(1111111111111111)
+@FILL
+0;JMP
+
+(NOT_PRESSED) //WHITE
+@1
+M=0 //PUT IN RAM[1] WHAT NEEDS TO BE FILL(000000000000000)
+@FILL
+0;JMP
+
+(FILL)
+@1
+D=M //D HOLDS EHAT NEEDS TO FILL WITH
+
+@0
+A=M
+M=D //FILL THE PIXEL WITH WHATS IN RAM[1]
+
+
+
+@0
+D=M+1
+@KBD
+D=A-D
+
+@0
+M=M+1 //MOVE TO NEXT PIXEL
+A=M 
+@WHAT_TO_FILL //IF WE GET TO ZERO - WE FINISHED FILLING THE SCREEN
+D;JEQ
+
+@FILL //IF NOT WE CONTINUE THE LOOP
+0;JMP
+
+
+
+
+
+
+
+
+
+
+
+
+
+
