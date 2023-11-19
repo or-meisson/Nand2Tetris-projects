@@ -55,7 +55,7 @@ M=0
     @R1
     D=D-M //we check if the current element is less than the min
     @NEW_MIN
-    D;JGT //if so, set a new min
+    D;JLT //if so, set a new min
 
     @R4 //we dereference the current element
     A=M
@@ -108,13 +108,13 @@ M=0
     @R2
     M=D
 
-    @END
-    0;JMP
+//     @END
+//     0;JMP
 
 
-(END)
-    @END
-    0;JMP
+// (END)
+//     @END
+//     0;JMP
 
 
 
