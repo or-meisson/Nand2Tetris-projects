@@ -27,5 +27,13 @@ CHIP Memory {
     OUT out[16];
 
     PARTS:
-    // Put your code here:
+    DMux(in=load, sel=address[14], a=loadram, b=loadscreen);
+
+    RAM16K(in=in, address=address[0..13], load=loadram, out=ramout);
+    Screen(in=in, address=address[0..12], load=loadscreen, out=screenout); //should i change the adress to match the screen map?
+    Keyboard(out=keyboardout);
+
+
+
+    Mux4Way16(a=ramout, b=ramout, c=screenout, d=keyboardout, sel=address[13..14], out=out);
 }
