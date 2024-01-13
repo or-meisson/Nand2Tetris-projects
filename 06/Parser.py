@@ -21,8 +21,7 @@ class Parser:
         Args:
             input_file (typing.TextIO): input file.
         """
-        # Your code goes here!
-        # A good place to start is to read all the lines of the input:
+
         self.input_lines = input_file.read().splitlines()
         self.current_command_idx = 0
         self.curr_command = None
@@ -43,17 +42,12 @@ class Parser:
         """Reads the next command from the input and makes it the current command.
         Should be called only if has_more_commands() is true.
         """
-        # Your code goes here!
         command_with_comments = self.input_lines[self.current_command_idx]
-        # print(command_with_comments)
-        # print(command_with_comments)
         self.curr_command = command_with_comments.split('//', 1)[0]. \
             replace(" ", "").strip().strip()  # remove whitespaces and comments
-        # print(self.curr_command)
-
         self.current_command_idx += 1
 
-    def command_type(self) -> str:  # with no symbolic references
+    def command_type(self) -> str:
         """
         Returns:
             str: the type of the current command:
@@ -61,7 +55,6 @@ class Parser:
             "C_COMMAND" for dest=comp;jump
             "L_COMMAND" (actually, pseudo-command) for (Xxx) where Xxx is a symbol
         """
-        # Your code goes here!
 
         if self.curr_command[0] == "@":
             return "A_COMMAND"
@@ -71,7 +64,6 @@ class Parser:
             self.is_c_command(self.curr_command)
             return "C_COMMAND"
 
-
     def symbol(self) -> str:
         """
         Returns:
@@ -79,7 +71,6 @@ class Parser:
             (Xxx). Should be called only when command_type() is "A_COMMAND" or 
             "L_COMMAND".
         """
-        # print(self.curr_command)
         if self.curr_command[0] == "@":
             return self.curr_command[1:]
         else:
@@ -140,7 +131,8 @@ class Parser:
             self.comp = dest_comp_parts[0]
 
         # Check if dest, comp, and jump are valid
-        return self.dest in valid_dest and self.comp in valid_comp and self.jump in valid_jump
+        return self.dest in valid_dest and self.comp in\
+               valid_comp and self.jump in valid_jump
 
     def is_there_command(self):
         if self.curr_command == "":
@@ -151,4 +143,3 @@ class Parser:
         self.current_command_idx = 0
 
 
-#write a function is_c_command that will say if a string is a c instruction
