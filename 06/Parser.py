@@ -45,8 +45,12 @@ class Parser:
         """
         # Your code goes here!
         command_with_comments = self.input_lines[self.current_command_idx]
+        # print(command_with_comments)
+        # print(command_with_comments)
         self.curr_command = command_with_comments.split('//', 1)[0]. \
             replace(" ", "").strip().strip()  # remove whitespaces and comments
+        # print(self.curr_command)
+
         self.current_command_idx += 1
 
     def command_type(self) -> str:  # with no symbolic references
@@ -58,12 +62,15 @@ class Parser:
             "L_COMMAND" (actually, pseudo-command) for (Xxx) where Xxx is a symbol
         """
         # Your code goes here!
+
         if self.curr_command[0] == "@":
             return "A_COMMAND"
-        elif is_c_command(self.curr_command)[0]:
-            return "C_COMMAND"
+        elif self.curr_command[0] == "(":
+            return "L_COMMAND"
         else:
-            return "L_COMMAND"  # dont know if this is correct
+            self.is_c_command(self.curr_command)
+            return "C_COMMAND"
+
 
     def symbol(self) -> str:
         """
@@ -72,10 +79,11 @@ class Parser:
             (Xxx). Should be called only when command_type() is "A_COMMAND" or 
             "L_COMMAND".
         """
+        # print(self.curr_command)
         if self.curr_command[0] == "@":
             return self.curr_command[1:]
         else:
-            return self.curr_command
+            return self.curr_command[1:-1]
 
     def dest(self) -> str:
         """
@@ -102,26 +110,45 @@ class Parser:
         """
         return self.jump
 
+    def is_c_command(self, instruction):
+        # Define lists of valid dest, comp, and jump mnemonics
+        valid_dest = ["", "M", "D", "DM", "MD", "A", "AM", "AD", "ADM", "AMD"]
+        valid_comp = [
+            "0", "1", "-1", "D", "A", "!D", "!A", "-D",
+            "-A", "D+1", "A+1", "D-1", "A-1", "D+A", "D-A",
+            "A-D", "D&A", "D|A", "M", "!M", "-M", "M+1",
+            "M-1", "D+M", "D-M", "M-D", "D&M", "D|M"
+        ]
+        valid_jump = ["", "JGT", "JEQ", "JGE", "JLT", "JNE", "JLE", "JMP"]
 
-    def is_c_command(self, string) -> bool:
-        parts = string.split('=')
-        # Check if there is exactly one '=' to separate dest from comp
+        # Split the instruction into dest, comp, and jump parts
+        parts = instruction.split(";")
         if len(parts) == 2:
-            self.dest, comp_and_jump = parts
-            # Further split comp_and_jump based on ';'
-            comp_and_jump_parts = comp_and_jump.split(';')
+            dest_comp = parts[0]
+            self.jump = parts[1]
+        else:
+            dest_comp = parts[0]
+            self.jump = ""
 
-            # Check if there is at most one ';'
-            if len(comp_and_jump_parts) <= 2:
-                self.comp = comp_and_jump_parts[0]
-                # Check if there is a jump part (optional)
-                self.jump = comp_and_jump_parts[1] if len(
-                    comp_and_jump_parts) == 2 else None
+        # Split the dest_comp part into dest and comp
+        dest_comp_parts = dest_comp.split("=")
+        if len(dest_comp_parts) == 2:
+            self.dest = dest_comp_parts[0]
+            self.comp = dest_comp_parts[1]
+        else:
+            self.dest = ""
+            self.comp = dest_comp_parts[0]
 
-                # Check if dest, comp, and jump (if present) are valid
-                if self.dest and self.comp:
-                    # Here, you can perform additional validation if needed
-                    return True
+        # Check if dest, comp, and jump are valid
+        return self.dest in valid_dest and self.comp in valid_comp and self.jump in valid_jump
 
-        # If the format is not matched, return False
-        return False
+    def is_there_command(self):
+        if self.curr_command == "":
+            return False
+        return True
+
+    def reset(self) -> None:
+        self.current_command_idx = 0
+
+
+#write a function is_c_command that will say if a string is a c instruction

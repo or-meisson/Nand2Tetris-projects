@@ -29,8 +29,9 @@ class Code:
             "AM": "101",
             "AD": "110",
             "ADM": "111",
+            "AMD": "111"
         }
-        return dest_table[mnemonic]
+        return dest_table.get(mnemonic, "000")
 
     @staticmethod
     def comp(mnemonic: str) -> str:
@@ -77,7 +78,7 @@ class Code:
             "A<<": "0100000",
             "M<<": "1100000",
         }
-        return comp_table[mnemonic]
+        return comp_table.get(mnemonic, "000")
 
     @staticmethod
     def jump(mnemonic: str) -> str:
@@ -98,4 +99,4 @@ class Code:
             "JLE": "110",
             "JMP": "111",
         }
-        return jump_table[mnemonic]
+        return jump_table.get(mnemonic)

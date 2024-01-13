@@ -21,12 +21,89 @@ def assemble_file(
         input_file (typing.TextIO): the file to assemble.
         output_file (typing.TextIO): writes all output to this file.
     """
-    # Your code goes here!
     # A good place to start is to initialize a new Parser object:
-    # parser = Parser(input_file)
+
+    symbol_table = SymbolTable()
+    line_number = 0
+    # first pass
+    first_pass_parser = Parser(input_file)
+    while first_pass_parser.has_more_commands():
+        first_pass_parser.advance()
+        if first_pass_parser.is_there_command():
+            # print(first_pass_parser.curr_command)
+            command_type = first_pass_parser.command_type()
+
+            if command_type == "L_COMMAND":
+                symbol = first_pass_parser.symbol()
+                if not symbol_table.contains(symbol):
+                    symbol_table.add_entry(symbol, line_number)
+            elif command_type == "C_COMMAND" or command_type == "A_COMMAND":
+                line_number += 1
+    # for key, value in symbol_table.my_symbol_table.items():
+    #     print(f"{key}: {value}")
+
+    input_file.seek(0)
+    # second pass
+    empty_ram_space = 16
+    second_pass_parser = Parser(input_file)
+    while second_pass_parser.has_more_commands():
+        second_pass_parser.advance()
+        if second_pass_parser.is_there_command():
+            # print(1)
+
+            command_type = second_pass_parser.command_type()
+            # print(command_type)
+            if command_type == "A_COMMAND":
+                symbol = second_pass_parser.symbol()
+                # print(symbol)
+                if not symbol.isdigit():
+                    # print('not int')
+                    if symbol_table.contains(symbol):
+                        # print("contains")
+                        address = symbol_table.my_symbol_table.get(symbol)
+                        # print(address)
+                        binary_representation = bin(address)[2:]
+                        padded_binary = binary_representation.zfill(16)
+                        # print("prints A")
+                        output_file.write(f"{padded_binary}\n")
+                    else:
+                        # print("not contains")
+                        symbol_table.add_entry(symbol, empty_ram_space)
+                        binary_representation = bin(empty_ram_space)[2:]
+                        padded_binary = binary_representation.zfill(16)
+                        output_file.write(f"{padded_binary}\n")
+                        empty_ram_space += 1
+                else:
+                    binary_representation = bin(int(symbol))[2:]
+                    padded_binary = binary_representation.zfill(16)
+                    output_file.write(f"{padded_binary}\n")
+
+            # elif command_type == "L_COMMAND":
+            #     symbol = second_pass_parser.symbol()
+            #     address = symbol_table.my_symbol_table.get(symbol)
+            #     binary_representation = bin(address)[2:]
+            #     padded_binary = binary_representation.zfill(16)
+            #     output_file.write(f"{padded_binary}\n")
+
+            elif command_type == "C_COMMAND":
+                dest = second_pass_parser.dest
+                comp = second_pass_parser.comp
+                jump = second_pass_parser.jump
+                code = Code()
+                binary_dest = code.dest(dest)
+                binary_comp = code.comp(comp)
+                binary_jump = code.jump(jump)
+                # print(second_pass_parser.curr_command)
+                if "<" in second_pass_parser.curr_command or ">" in \
+                        second_pass_parser.curr_command:
+                    output_file.write(
+                        f"101{binary_comp}{binary_dest}{binary_jump}\n")
+                else:
+                    output_file.write(
+                        f"111{binary_comp}{binary_dest}{binary_jump}\n")
+
     # Note that you can write to output_file like so:
     # output_file.write("Hello world! \n")
-    pass
 
 
 if "__main__" == __name__:
