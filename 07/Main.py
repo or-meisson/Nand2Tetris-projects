@@ -22,8 +22,8 @@ def translate_file(
     """
     # Your code goes here!
     # It might be good to start with something like:
-    # parser = Parser(input_file)
-    # code_writer = CodeWriter(output_file)
+    parser = Parser(input_file)
+    code_writer = CodeWriter(output_file)
     pass
 
 

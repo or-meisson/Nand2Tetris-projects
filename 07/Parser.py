@@ -55,7 +55,12 @@ class Parser:
         # Your code goes here!
         # A good place to start is to read all the lines of the input:
         # input_lines = input_file.read().splitlines()
-        pass
+        self.input_lines = input_file.read().splitlines()
+        self.current_command_idx = 0
+        self.curr_command = None
+        self.command_type_string = None
+        self.arg1 = None
+        self.arg2 = None
 
     def has_more_commands(self) -> bool:
         """Are there more commands in the input?
@@ -64,7 +69,7 @@ class Parser:
             bool: True if there are more commands, False otherwise.
         """
         # Your code goes here!
-        pass
+        return self.current_command_idx < len(self.input_lines)
 
     def advance(self) -> None:
         """Reads the next command from the input and makes it the current 
@@ -72,7 +77,19 @@ class Parser:
         there is no current command.
         """
         # Your code goes here!
-        pass
+        command_with_comments = self.input_lines[self.current_command_idx]
+        clean_command = command_with_comments.split('//', 1)[0] \
+            .replace(" ", "").strip()
+
+        command_components = clean_command.split()
+
+        if command_components:
+            self.command_type_string = command_components[0]
+            self.arg1 = command_components[1] if len(
+                command_components) > 1 else None
+            self.arg2 = command_components[2] if len(
+                command_components) > 2 else None
+        self.current_command_idx += 1
 
     def command_type(self) -> str:
         """
@@ -83,8 +100,25 @@ class Parser:
             "C_PUSH", "C_POP", "C_LABEL", "C_GOTO", "C_IF", "C_FUNCTION",
             "C_RETURN", "C_CALL".
         """
-        # Your code goes here!
-        pass
+        if self.command_type_string == "push":
+            return "C_PUSH"
+        if self.command_type_string == "pop":
+            return "C_POP"
+        if self.command_type_string in ["add", "sub", "neg", "eq", "gt", "lt",
+                                        "and", "or", "not"]:
+            return "C_ARITHMETIC"
+        if self.command_type_string == "function":
+            return "C_FUNCTION"
+        if self.command_type_string == "return":
+            return "C_RETURN"
+        if self.command_type_string == "call":
+            return "C_CALL"
+        if self.command_type_string == "goto":
+            return "C_GOTO"
+        if self.command_type_string == "label":
+            return "C_LABEL"
+        if self.command_type_string == "if":
+            return "C_IF"
 
     def arg1(self) -> str:
         """
@@ -94,7 +128,7 @@ class Parser:
             Should not be called if the current command is "C_RETURN".
         """
         # Your code goes here!
-        pass
+        return self.arg1
 
     def arg2(self) -> int:
         """
@@ -104,4 +138,4 @@ class Parser:
             "C_FUNCTION" or "C_CALL".
         """
         # Your code goes here!
-        pass
+        return self.arg2
