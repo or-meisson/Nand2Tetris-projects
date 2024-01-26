@@ -55,12 +55,14 @@ class Parser:
         # Your code goes here!
         # A good place to start is to read all the lines of the input:
         # input_lines = input_file.read().splitlines()
-        self.input_lines = input_file.read().splitlines()
+        self.input_lines = list(
+            filter(lambda x: len(x.strip()), input_file.read().splitlines()))
         self.current_command_idx = 0
-        self.curr_command = None
-        self.command_type_string = None
+        # self.curr_command = None
+        self.command_type_string = ""
         self.arg1 = None
         self.arg2 = None
+        self.clean_command = ""
 
     def has_more_commands(self) -> bool:
         """Are there more commands in the input?
@@ -78,18 +80,26 @@ class Parser:
         """
         # Your code goes here!
         command_with_comments = self.input_lines[self.current_command_idx]
-        clean_command = command_with_comments.split('//', 1)[0] \
-            .replace(" ", "").strip()
+        self.clean_command = command_with_comments.split('//', 1)[0].rstrip()
+        # print(self.clean_command)
+        # print(clean_command)
 
-        command_components = clean_command.split()
+        command_components = self.clean_command.split()
+        # print(command_components)
+        if not self.is_there_command():
+            # print("not")
+            self.current_command_idx += 1
+            # print(command_components)
+        else:
 
-        if command_components:
             self.command_type_string = command_components[0]
             self.arg1 = command_components[1] if len(
-                command_components) > 1 else None
+                command_components) > 1 else command_components[0]
             self.arg2 = command_components[2] if len(
                 command_components) > 2 else None
-        self.current_command_idx += 1
+
+            # print(self.curr_command)
+            self.current_command_idx += 1
 
     def command_type(self) -> str:
         """
@@ -100,6 +110,8 @@ class Parser:
             "C_PUSH", "C_POP", "C_LABEL", "C_GOTO", "C_IF", "C_FUNCTION",
             "C_RETURN", "C_CALL".
         """
+        # print("here")
+        # print(self.command_type_string)
         if self.command_type_string == "push":
             return "C_PUSH"
         if self.command_type_string == "pop":
@@ -139,3 +151,8 @@ class Parser:
         """
         # Your code goes here!
         return self.arg2
+
+    def is_there_command(self):
+        if self.clean_command == "":
+            return False
+        return True

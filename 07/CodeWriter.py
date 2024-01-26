@@ -20,7 +20,9 @@ class CodeWriter:
         # Your code goes here!
         # Note that you can write to output_stream like so:
         # output_stream.write("Hello world! \n")
-        pass
+        self.output_stream = output_stream
+        self.file_name = None
+        self.label_idx = 0
 
     def set_file_name(self, filename: str) -> None:
         """Informs the code writer that the translation of a new VM file is 
@@ -40,7 +42,7 @@ class CodeWriter:
         # the function "translate_file" in Main.py using python's os library,
         # For example, using code similar to:
         # input_filename, input_extension = os.path.splitext(os.path.basename(input_file.name))
-        pass
+        self.file_name = filename
 
     def write_arithmetic(self, command: str) -> None:
         """Writes assembly code that is the translation of the given 
@@ -51,8 +53,38 @@ class CodeWriter:
         Args:
             command (str): an arithmetic command.
         """
+        self.output_stream.write(f"//{command}\n")
+        unary_arithmetic_dict = \
+            {"neg": "-M", "not": "!M", "shiftleft": "M<<", "shiftright": "M>>"}
+        binary_arithmetic_dict = \
+            {"add": "+D", "sub": "-D", "and": "&D", "or": "|D"}
+        eq_gt_lt_dict = {
+            "eq": f"@EQUAL{self.label_idx}\nD;JEQ\n@NOT_EQUAL{self.label_idx}\n0;JMP\n(EQUAL{self.label_idx})\n@SP\nA=M-1\nA=A-1"
+                  f"\nM=-1\n@CONTINUE{self.label_idx}\n0;JMP\n(NOT_EQUAL{self.label_idx})\n@SP\nA=M-1\nA=A-1"
+                  f"\nM=0\n@CONTINUE{self.label_idx}\n0;JMP",
+            "gt" : f"@GREATER{self.label_idx}\nD;JGT\n@NOT_GREATER{self.label_idx}\n0;JMP\n(GREATER{self.label_idx})\n@SP\nA=M-1\nA=A-1"
+                  f"\nM=-1\n@CONTINUE{self.label_idx}\n0;JMP\n(NOT_GREATER{self.label_idx})\n@SP\nA=M-1\nA=A-1"
+                  f"\nM=0\n@CONTINUE{self.label_idx}\n0;JMP",
+            "lt" : f"@LOWER{self.label_idx}\nD;JLT\n@NOT_LOWER{self.label_idx}\n0;JMP\n(LOWER{self.label_idx})\n@SP\nA=M-1\nA=A-1"
+                  f"\nM=-1\n@CONTINUE{self.label_idx}\n0;JMP\n(NOT_LOWER{self.label_idx})\n@SP\nA=M-1\nA=A-1"
+                  f"\nM=0\n@CONTINUE{self.label_idx}\n0;JMP"}
+
         # Your code goes here!
-        pass
+        if command in binary_arithmetic_dict.keys():
+            self.output_stream.write \
+                (f"@SP\nA=M-1\nD=M\nA=A-1\nM=M{binary_arithmetic_dict[command]}"  # todo maybe AM=M-1
+                 f"\n@SP\nM=M-1\n")
+        elif command in unary_arithmetic_dict.keys():
+            self.output_stream.write(
+                f"@SP\nA=M-1\nM={unary_arithmetic_dict[command]}\n")
+        elif command in eq_gt_lt_dict.keys():
+            self.output_stream.write(
+                f"@SP\nA=M-1\nD=M\nA=A-1\nD=M-D\n{eq_gt_lt_dict[command]}"
+                f"\n(CONTINUE{self.label_idx})\n@SP\nM=M-1\n")
+        self.label_idx+=1
+        # if command == "eq":
+        #     self.output_stream.write(
+        #         f"@SP\nA=M-1\nD=M\nA=A-1\nD=M-D\n@SP\nM=M-1\n")
 
     def write_push_pop(self, command: str, segment: str, index: int) -> None:
         """Writes assembly code that is the translation of the given 
@@ -68,7 +100,60 @@ class CodeWriter:
         # be translated to the assembly symbol "Xxx.i". In the subsequent
         # assembly process, the Hack assembler will allocate these symbolic
         # variables to the RAM, starting at address 16.
-        pass
+        # print(index)
+        segment_dict = {
+            "local": "@LCL\nD=M",
+            "argument": "@ARG\nD=M",
+            "this": "@THIS\nD=M",
+            "that": "@THAT\nD=M",
+            "temp": "@5\nD=A",
+            "pointer": "@THIS\nD=A"
+        }
+        if command == "C_PUSH":
+            self.output_stream.write(f"//push {segment} {index}\n")
+            if segment == "constant":
+                # print("cons")
+                self.output_stream.write(
+                    f"@{index}\nD=A\n@SP\nA=M\nM=D\n@SP\nM=M+1\n")
+            elif segment == "static":
+                self.output_stream.write(
+                    f"@{self.file_name}.{index}\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n")
+            else:
+                # print("get here?")
+                # segment_dict = {
+                #     "local": "@LCL\nD=M",
+                #     "argument": "@ARG\nD=M",
+                #     "this": "@THIS\nD=M",
+                #     "that": "@THAT\nD=M",
+                #     "temp": "@TEMP\nD=M",
+                #     "pointer": "@THIS\nD=A"
+                # }
+                # print("get here?")
+                self.output_stream.write(
+                    f"{segment_dict[segment]}\n@{index}\nA=A+D\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n")
+
+        if command == "C_POP":
+            self.output_stream.write(f"//pop {segment} {index}\n")
+            if segment == "constant":
+                self.output_stream.write(
+                    f"@SP\nM=M-1\nA=M\nD=M\n@{index}\nM=D\n")
+            if segment == "static":
+                self.output_stream.write(
+                    f"@SP\nM=M-1\nA=M\nD=M\n")
+                # Store in static segment at the specified index
+                self.output_stream.write(
+                    f"@{self.file_name}.{index}\nM=D\n")
+            else:
+
+                # if segment == "temp":
+                #     pass
+                # else:
+                self.output_stream.write(
+                    f"{segment_dict[segment]}\n@{index}\nD=D+A\n@R13\nM=D\n@SP\n"
+                    f"M=M-1\nA=M\nD=M\n@R13\nA=M\nM=D\n")
+
+    def write_end_loop(self):
+        self.output_stream.write("(END)\n@END\n0;JMP\n")
 
     def write_label(self, label: str) -> None:
         """Writes assembly code that affects the label command. 
@@ -84,7 +169,7 @@ class CodeWriter:
         # This is irrelevant for project 7,
         # you will implement this in project 8!
         pass
-    
+
     def write_goto(self, label: str) -> None:
         """Writes assembly code that affects the goto command.
 
@@ -94,7 +179,7 @@ class CodeWriter:
         # This is irrelevant for project 7,
         # you will implement this in project 8!
         pass
-    
+
     def write_if(self, label: str) -> None:
         """Writes assembly code that affects the if-goto command. 
 
@@ -104,7 +189,7 @@ class CodeWriter:
         # This is irrelevant for project 7,
         # you will implement this in project 8!
         pass
-    
+
     def write_function(self, function_name: str, n_vars: int) -> None:
         """Writes assembly code that affects the function command. 
         The handling of each "function Xxx.foo" command within the file Xxx.vm
@@ -124,7 +209,7 @@ class CodeWriter:
         # repeat n_vars times:  // n_vars = number of local variables
         #   push constant 0     // initializes the local variables to 0
         pass
-    
+
     def write_call(self, function_name: str, n_args: int) -> None:
         """Writes assembly code that affects the call command. 
         Let "Xxx.foo" be a function within the file Xxx.vm.
@@ -154,7 +239,7 @@ class CodeWriter:
         # goto function_name    // transfers control to the callee
         # (return_address)      // injects the return address label into the code
         pass
-    
+
     def write_return(self) -> None:
         """Writes assembly code that affects the return command."""
         # This is irrelevant for project 7,
