@@ -31,18 +31,12 @@ def translate_file(
         parser.advance()
 
         command_type = parser.command_type()
-        # print(command_type)
         if command_type:
-            # print(comm/and_type)
             if command_type == "C_PUSH" or command_type=="C_POP":
-                # print(command_type)
-                # print(parser.arg1)
-                # print(parser.arg2)
                 code_writer.write_push_pop(command_type, parser.arg1, parser.arg2)
             if command_type == "C_ARITHMETIC":
-                # print(parser.arg1)
                 code_writer.write_arithmetic(parser.arg1)
-    # code_writer.write_end_loop() //todo check if ok without
+
 
 
 if "__main__" == __name__:

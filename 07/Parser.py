@@ -23,7 +23,7 @@ class Parser:
     valid program, it can be translated into a stream of valid assembly 
     commands. VM commands may be separated by an arbitrary number of whitespace
     characters and comments, which are ignored. Comments begin with "//" and
-    last until the line’s end.
+    last until the lines end.
     The different parts of each VM command may also be separated by an arbitrary
     number of non-newline whitespace characters.
 
@@ -81,15 +81,9 @@ class Parser:
         # Your code goes here!
         command_with_comments = self.input_lines[self.current_command_idx]
         self.clean_command = command_with_comments.split('//', 1)[0].rstrip()
-        # print(self.clean_command)
-        # print(clean_command)
-
         command_components = self.clean_command.split()
-        # print(command_components)
         if not self.is_there_command():
-            # print("not")
             self.current_command_idx += 1
-            # print(command_components)
         else:
 
             self.command_type_string = command_components[0]
@@ -97,8 +91,6 @@ class Parser:
                 command_components) > 1 else command_components[0]
             self.arg2 = command_components[2] if len(
                 command_components) > 2 else None
-
-            # print(self.curr_command)
             self.current_command_idx += 1
 
     def command_type(self) -> str:
@@ -110,8 +102,7 @@ class Parser:
             "C_PUSH", "C_POP", "C_LABEL", "C_GOTO", "C_IF", "C_FUNCTION",
             "C_RETURN", "C_CALL".
         """
-        # print("here")
-        # print(self.command_type_string)
+
         if self.command_type_string == "push":
             return "C_PUSH"
         if self.command_type_string == "pop":

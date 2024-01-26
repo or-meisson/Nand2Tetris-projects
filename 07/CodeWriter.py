@@ -58,17 +58,7 @@ class CodeWriter:
             {"neg": "-M", "not": "!M", "shiftleft": "M<<", "shiftright": "M>>"}
         binary_arithmetic_dict = \
             {"add": "+D", "sub": "-D", "and": "&D", "or": "|D"}
-        eq_gt_lt_dict = {
-            "eq": f"@EQUAL{self.label_idx}\nD;JEQ\n@NOT_EQUAL{self.label_idx}\n0;JMP\n(EQUAL{self.label_idx})\n@SP\nA=M-1\nA=A-1"
-                  f"\nM=-1\n@CONTINUE{self.label_idx}\n0;JMP\n(NOT_EQUAL{self.label_idx})\n@SP\nA=M-1\nA=A-1"
-                  f"\nM=0\n@CONTINUE{self.label_idx}\n0;JMP",
-            "gt" : f"@GREATER{self.label_idx}\nD;JGT\n@NOT_GREATER{self.label_idx}\n0;JMP\n(GREATER{self.label_idx})\n@SP\nA=M-1\nA=A-1"
-                  f"\nM=-1\n@CONTINUE{self.label_idx}\n0;JMP\n(NOT_GREATER{self.label_idx})\n@SP\nA=M-1\nA=A-1"
-                  f"\nM=0\n@CONTINUE{self.label_idx}\n0;JMP",
-            "lt" : f"@LOWER{self.label_idx}\nD;JLT\n@NOT_LOWER{self.label_idx}\n0;JMP\n(LOWER{self.label_idx})\n@SP\nA=M-1\nA=A-1"
-                  f"\nM=-1\n@CONTINUE{self.label_idx}\n0;JMP\n(NOT_LOWER{self.label_idx})\n@SP\nA=M-1\nA=A-1"
-                  f"\nM=0\n@CONTINUE{self.label_idx}\n0;JMP"}
-
+        jump_conditions = {"lt": "D;JGT", "gt": "D;JLT", "eq": "D;JEQ"}
         # Your code goes here!
         if command in binary_arithmetic_dict.keys():
             self.output_stream.write \
@@ -77,14 +67,46 @@ class CodeWriter:
         elif command in unary_arithmetic_dict.keys():
             self.output_stream.write(
                 f"@SP\nA=M-1\nM={unary_arithmetic_dict[command]}\n")
-        elif command in eq_gt_lt_dict.keys():
+        elif command in jump_conditions.keys():
+
+            # check if second number is negative
             self.output_stream.write(
-                f"@SP\nA=M-1\nD=M\nA=A-1\nD=M-D\n{eq_gt_lt_dict[command]}"
-                f"\n(CONTINUE{self.label_idx})\n@SP\nM=M-1\n")
-        self.label_idx+=1
-        # if command == "eq":
-        #     self.output_stream.write(
-        #         f"@SP\nA=M-1\nD=M\nA=A-1\nD=M-D\n@SP\nM=M-1\n")
+                f"@SP\nA=M-1\nD=M\n@SEC_NEGATIVE{self.label_idx}\n"
+                f"D;JLT\n@SEC_POSITIVE{self.label_idx}\n"
+                f"D;JGT\n@BOTH_SAME{self.label_idx}\n"
+                f"0;JMP\n")
+            # check if second number is positive (second is negative)
+            self.output_stream.write(
+                f"(SEC_NEGATIVE{self.label_idx})\n@SP\nA=M-1\n"
+                f"A=A-1\nD=M\n@BOTH_SAME{self.label_idx}\n"
+                f"D;JLE\n@DIFFERENT{self.label_idx}\nD;JGT\n")
+            # check if second number is positive (second is positive)
+            self.output_stream.write(
+                f"(SEC_POSITIVE{self.label_idx})\n@SP\nA=M-1\n"
+                f"A=A-1\nD=M\n@BOTH_SAME{self.label_idx}\n"
+                f"D;JGE\n@DIFFERENT{self.label_idx}\nD;JLT\n")
+            # different signs (could be overflow)
+            self.output_stream.write(f"(DIFFERENT{self.label_idx})\n")
+            if command in ["lt", "gt"]:
+                self.output_stream.write(
+                    f"@SP\nA=M-1\nD=M\n@TRUE{self.label_idx}\n"
+                    f"{jump_conditions[command]}\n@FALSE{self.label_idx}\n"
+                    f"0;JMP\n")
+            else:
+                self.output_stream.write(f"@FALSE{self.label_idx}\n0;JMP\n")
+
+            #no overflow
+            self.output_stream.write(
+                f"(BOTH_SAME{self.label_idx})\n@SP\nA=M-1\nD=M\nA=A-1\nD=D-M\n@TRUE{self.label_idx}\n"
+                f"{jump_conditions[command]}\n(FALSE{self.label_idx})\n@SP\nA=M-1\n"
+                f"A=A-1\nM=0\n@END{self.label_idx}\n0;JMP\n(TRUE{self.label_idx})\n"
+                f"@SP\nA=M-1\nA=A-1\nM=-1\n(END{self.label_idx})\n@SP\nM=M-1\n")
+
+
+
+
+        self.label_idx += 1
+
 
     def write_push_pop(self, command: str, segment: str, index: int) -> None:
         """Writes assembly code that is the translation of the given 
@@ -100,7 +122,6 @@ class CodeWriter:
         # be translated to the assembly symbol "Xxx.i". In the subsequent
         # assembly process, the Hack assembler will allocate these symbolic
         # variables to the RAM, starting at address 16.
-        # print(index)
         segment_dict = {
             "local": "@LCL\nD=M",
             "argument": "@ARG\nD=M",
@@ -119,16 +140,6 @@ class CodeWriter:
                 self.output_stream.write(
                     f"@{self.file_name}.{index}\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n")
             else:
-                # print("get here?")
-                # segment_dict = {
-                #     "local": "@LCL\nD=M",
-                #     "argument": "@ARG\nD=M",
-                #     "this": "@THIS\nD=M",
-                #     "that": "@THAT\nD=M",
-                #     "temp": "@TEMP\nD=M",
-                #     "pointer": "@THIS\nD=A"
-                # }
-                # print("get here?")
                 self.output_stream.write(
                     f"{segment_dict[segment]}\n@{index}\nA=A+D\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n")
 
@@ -144,16 +155,9 @@ class CodeWriter:
                 self.output_stream.write(
                     f"@{self.file_name}.{index}\nM=D\n")
             else:
-
-                # if segment == "temp":
-                #     pass
-                # else:
                 self.output_stream.write(
                     f"{segment_dict[segment]}\n@{index}\nD=D+A\n@R13\nM=D\n@SP\n"
                     f"M=M-1\nA=M\nD=M\n@R13\nA=M\nM=D\n")
-
-    def write_end_loop(self):
-        self.output_stream.write("(END)\n@END\n0;JMP\n")
 
     def write_label(self, label: str) -> None:
         """Writes assembly code that affects the label command. 
