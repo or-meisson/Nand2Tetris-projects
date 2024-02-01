@@ -23,8 +23,27 @@ def translate_file(
         bootstrap (bool): if this is True, the current file is the 
             first file we are translating.
     """
-    # Your code goes here!
-    pass
+    parser = Parser(input_file)
+    code_writer = CodeWriter(output_file)
+    input_filename, input_extension = os.path.splitext(
+        os.path.basename(input_file.name))
+    code_writer.set_file_name(input_filename)
+    while parser.has_more_commands():
+        parser.advance()
+        command_type = parser.command_type()
+        # print(command_type)
+        if command_type:
+            if command_type == "C_PUSH" or command_type == "C_POP":
+                code_writer.write_push_pop(command_type, parser.arg1,
+                                           parser.arg2)
+            if command_type == "C_ARITHMETIC":
+                code_writer.write_arithmetic(parser.arg1)
+            if command_type == "C_LABEL":
+                code_writer.write_label(parser.arg1)
+            if command_type == "C_GOTO":
+                code_writer.write_goto(parser.arg1)
+            if command_type == "C_IF":
+                code_writer.write_if(parser.arg1)
 
 
 if "__main__" == __name__:
