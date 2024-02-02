@@ -12,6 +12,7 @@ from Parser import Parser
 from CodeWriter import CodeWriter
 
 
+
 def translate_file(
         input_file: typing.TextIO, output_file: typing.TextIO,
         bootstrap: bool) -> None:
@@ -28,22 +29,32 @@ def translate_file(
     input_filename, input_extension = os.path.splitext(
         os.path.basename(input_file.name))
     code_writer.set_file_name(input_filename)
+
     while parser.has_more_commands():
         parser.advance()
         command_type = parser.command_type()
         # print(command_type)
         if command_type:
+            arg1 = parser.arg1()
+            arg2 = parser.arg2()
             if command_type == "C_PUSH" or command_type == "C_POP":
-                code_writer.write_push_pop(command_type, parser.arg1,
-                                           parser.arg2)
+                code_writer.write_push_pop(command_type, arg1,
+                                           arg2)
             if command_type == "C_ARITHMETIC":
-                code_writer.write_arithmetic(parser.arg1)
+                code_writer.write_arithmetic(arg1)
             if command_type == "C_LABEL":
-                code_writer.write_label(parser.arg1)
+                code_writer.write_label(arg1)
             if command_type == "C_GOTO":
-                code_writer.write_goto(parser.arg1)
+                code_writer.write_goto(arg1)
             if command_type == "C_IF":
-                code_writer.write_if(parser.arg1)
+                code_writer.write_if(arg1)
+            if command_type == "C_FUNCTION":
+                code_writer.write_function(arg1, int(arg2))
+            if command_type == "C_CALL":
+                code_writer.write_call(arg1, int(arg2))
+            if command_type == "C_RETURN":
+                code_writer.write_return()
+
 
 
 if "__main__" == __name__:

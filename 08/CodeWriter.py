@@ -23,7 +23,8 @@ class CodeWriter:
         self.output_stream = output_stream
         self.file_name = None
         self.label_idx = 0
-        self.curr_function = ""
+        self.curr_function = "null"  # "Xxx.foo"
+        self.call_counter = 0
 
     def set_file_name(self, filename: str) -> None:
         """Informs the code writer that the translation of a new VM file is 
@@ -63,7 +64,7 @@ class CodeWriter:
         # Your code goes here!
         if command in binary_arithmetic_dict.keys():
             self.output_stream.write \
-                (f"@SP\nA=M-1\nD=M\nA=A-1\nM=M{binary_arithmetic_dict[command]}"  # todo maybe AM=M-1
+                (f"@SP\nA=M-1\nD=M\nA=A-1\nM=M{binary_arithmetic_dict[command]}"  
                  f"\n@SP\nM=M-1\n")
         elif command in unary_arithmetic_dict.keys():
             self.output_stream.write(
@@ -96,18 +97,14 @@ class CodeWriter:
             else:
                 self.output_stream.write(f"@FALSE{self.label_idx}\n0;JMP\n")
 
-            #no overflow
+            # no overflow
             self.output_stream.write(
                 f"(BOTH_SAME{self.label_idx})\n@SP\nA=M-1\nD=M\nA=A-1\nD=D-M\n@TRUE{self.label_idx}\n"
                 f"{jump_conditions[command]}\n(FALSE{self.label_idx})\n@SP\nA=M-1\n"
                 f"A=A-1\nM=0\n@END{self.label_idx}\n0;JMP\n(TRUE{self.label_idx})\n"
                 f"@SP\nA=M-1\nA=A-1\nM=-1\n(END{self.label_idx})\n@SP\nM=M-1\n")
 
-
-
-
         self.label_idx += 1
-
 
     def write_push_pop(self, command: str, segment: str, index: int) -> None:
         """Writes assembly code that is the translation of the given 
@@ -171,7 +168,9 @@ class CodeWriter:
         Args:
             label (str): the label to write.
         """
-        self.output_stream.write(f"//write label {label}\n(null${label})\n")
+        self.output_stream.write(f"//write label {label}\n")
+        self.output_stream.write(
+            f"({self.curr_function}${label})\n")
 
     def write_goto(self, label: str) -> None:
         """Writes assembly code that affects the goto command.
@@ -179,7 +178,9 @@ class CodeWriter:
         Args:
             label (str): the label to go to.
         """
-        self.output_stream.write(f"//write goto {label}\n@null${label}\n0;JMP\n")
+        self.output_stream.write(f"//write goto {label}\n")
+        self.output_stream.write(
+            f"@{self.curr_function}${label}\n0;JMP\n")
 
     def write_if(self, label: str) -> None:
         """Writes assembly code that affects the if-goto command. 
@@ -188,10 +189,10 @@ class CodeWriter:
             label (str): the label to go to.
         """
         # if the top of the stack is not false, jump
-        self.output_stream.write(f"//write goto {label} if top of stack is not false\n"
-                                 f"@SP\nA=M-1\nD=M\n@SP\nM=M-1\n@null${label}\nD;JNE\n")
-
-
+        self.output_stream.write(
+            f"//write goto {label} if top of stack is not false\n")
+        self.output_stream.write(f"@SP\nA=M-1\nD=M\n@SP\nM=M-1\n@"
+                                 f"{self.curr_function}${label}\nD;JNE\n")
 
     def write_function(self, function_name: str, n_vars: int) -> None:
         """Writes assembly code that affects the function command. 
@@ -210,8 +211,11 @@ class CodeWriter:
         # (function_name)       // injects a function entry label into the code
         # repeat n_vars times:  // n_vars = number of local variables
         #   push constant 0     // initializes the local variables to 0
+        self.output_stream.write(f"//writing function {function_name}\n")
         self.curr_function = function_name
-
+        self.output_stream.write(f"({function_name})\n")
+        for _ in range(n_vars):
+            self.write_push_pop("C_PUSH", "constant", 0)
 
     def write_call(self, function_name: str, n_args: int) -> None:
         """Writes assembly code that affects the call command. 
@@ -229,8 +233,6 @@ class CodeWriter:
             function_name (str): the name of the function to call.
             n_args (int): the number of arguments of the function.
         """
-        # This is irrelevant for project 7,
-        # you will implement this in project 8!
         # The pseudo-code of "call function_name n_args" is:
         # push return_address   // generates a label and pushes it to the stack
         # push LCL              // saves LCL of the caller
@@ -241,12 +243,34 @@ class CodeWriter:
         # LCL = SP              // repositions LCL
         # goto function_name    // transfers control to the callee
         # (return_address)      // injects the return address label into the code
-        pass
+        self.call_counter += 1
+        self.output_stream.write(f"//writing call {function_name}\n")
+        for_return_address = f"{self.curr_function}$ret.{self.call_counter}"
+        # push label address to the stack
+        self.output_stream.write(
+            f"@{for_return_address}\nD=A\n@SP\nA=M\nM=D\n@SP\nM=M+1\n")
+        elements_to_push = ["LCL", "ARG", "THIS", "THAT"]
+        for elem in elements_to_push:
+            self.output_stream.write(
+                f"@{elem}\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n")
+        self.output_stream.write("@SP\nD=M\n")
+        # self.output_stream.write(f"@{n_args}\nD=A\n@5\nD=A-D\n@SP\nD=M-D\n@ARG\nM=D\n")  # ARG = SP-5-n_args
+        for _ in range(n_args + 5):
+            self.output_stream.write(f"D=D-1\n")
+        self.output_stream.write(f"@ARG\nM=D\n")
+        self.output_stream.write(f"@SP\nD=M\n@LCL\nM=D\n")  # LCL = SP
+        self.output_stream.write(
+            f"@{function_name}\n0;JMP\n")  # goto function_name
+        # print(self.curr_function)
+        # print("kkk")
+        self.output_stream.write(
+            f"({for_return_address})\n")  # (return_address)
+
+    # Xxx.foo$bar
 
     def write_return(self) -> None:
         """Writes assembly code that affects the return command."""
-        # This is irrelevant for project 7,
-        # you will implement this in project 8!
+
         # The pseudo-code of "return" is:
         # frame = LCL                   // frame is a temporary variable
         # return_address = *(frame-5)   // puts the return address in a temp var
@@ -257,4 +281,13 @@ class CodeWriter:
         # ARG = *(frame-3)              // restores ARG for the caller
         # LCL = *(frame-4)              // restores LCL for the caller
         # goto return_address           // go to the return address
-        pass
+        self.output_stream.write(f"//writing return\n")
+        self.output_stream.write(f"@LCL\nD=M\n@frame\nM=D\n")  # frame = LCL
+        self.output_stream.write(f"@5\nD=A\n@frame\nD=M-D\nA=D\nD=M\n@return_address\nM=D\n") # return_address = *(frame-5)
+        self.write_push_pop("C_POP", "argument", 0) # *ARG = pop()
+        self.output_stream.write(f"@ARG\nD=M\nD=D+1\n@SP\nM=D\n") # SP = ARG + 1
+        self.output_stream.write(f"@frame\nD=M-1\nA=D\nD=M\n@THAT\nM=D\n") # THAT = *(frame-1)
+        self.output_stream.write(f"@2\nD=A\n@frame\nD=M-D\nA=D\nD=M\n@THIS\nM=D\n") # THIS = *(frame-2)
+        self.output_stream.write(f"@3\nD=A\n@frame\nD=M-D\nA=D\nD=M\n@ARG\nM=D\n")  # ARG = *(frame-3)
+        self.output_stream.write(f"@4\nD=A\n@frame\nD=M-D\nA=D\nD=M\n@LCL\nM=D\n")  # LCL = *(frame-4)
+        self.output_stream.write(f"@return_address\nA=M\n0;JMP\n") # goto return_address

@@ -60,8 +60,8 @@ class Parser:
         self.current_command_idx = 0
         # self.curr_command = None
         self.command_type_string = ""
-        self.arg1 = None
-        self.arg2 = None
+        self._arg1 = None
+        self._arg2 = None
         self.clean_command = ""
 
     def has_more_commands(self) -> bool:
@@ -87,9 +87,9 @@ class Parser:
         else:
 
             self.command_type_string = command_components[0]
-            self.arg1 = command_components[1] if len(
+            self._arg1 = command_components[1] if len(
                 command_components) > 1 else command_components[0]
-            self.arg2 = command_components[2] if len(
+            self._arg2 = command_components[2] if len(
                 command_components) > 2 else None
             self.current_command_idx += 1
 
@@ -131,7 +131,7 @@ class Parser:
             Should not be called if the current command is "C_RETURN".
         """
         # Your code goes here!
-        return self.arg1
+        return self._arg1
 
     def arg2(self) -> int:
         """
@@ -141,7 +141,7 @@ class Parser:
             "C_FUNCTION" or "C_CALL".
         """
         # Your code goes here!
-        return self.arg2
+        return self._arg2
 
     def is_there_command(self):
         if self.clean_command == "":
