@@ -58,7 +58,6 @@ class Parser:
         self.input_lines = list(
             filter(lambda x: len(x.strip()), input_file.read().splitlines()))
         self.current_command_idx = 0
-        # self.curr_command = None
         self.command_type_string = ""
         self._arg1 = None
         self._arg2 = None
@@ -91,6 +90,7 @@ class Parser:
                 command_components) > 1 else command_components[0]
             self._arg2 = command_components[2] if len(
                 command_components) > 2 else None
+
             self.current_command_idx += 1
 
     def command_type(self) -> str:

@@ -12,7 +12,6 @@ from Parser import Parser
 from CodeWriter import CodeWriter
 
 
-
 def translate_file(
         input_file: typing.TextIO, output_file: typing.TextIO,
         bootstrap: bool) -> None:
@@ -29,11 +28,11 @@ def translate_file(
     input_filename, input_extension = os.path.splitext(
         os.path.basename(input_file.name))
     code_writer.set_file_name(input_filename)
-
+    if bootstrap:
+        code_writer.bootstrap()
     while parser.has_more_commands():
         parser.advance()
         command_type = parser.command_type()
-        # print(command_type)
         if command_type:
             arg1 = parser.arg1()
             arg2 = parser.arg2()
@@ -54,7 +53,6 @@ def translate_file(
                 code_writer.write_call(arg1, int(arg2))
             if command_type == "C_RETURN":
                 code_writer.write_return()
-
 
 
 if "__main__" == __name__:

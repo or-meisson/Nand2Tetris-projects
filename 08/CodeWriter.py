@@ -64,7 +64,7 @@ class CodeWriter:
         # Your code goes here!
         if command in binary_arithmetic_dict.keys():
             self.output_stream.write \
-                (f"@SP\nA=M-1\nD=M\nA=A-1\nM=M{binary_arithmetic_dict[command]}"  
+                (f"@SP\nA=M-1\nD=M\nA=A-1\nM=M{binary_arithmetic_dict[command]}"
                  f"\n@SP\nM=M-1\n")
         elif command in unary_arithmetic_dict.keys():
             self.output_stream.write(
@@ -73,36 +73,39 @@ class CodeWriter:
 
             # check if second number is negative
             self.output_stream.write(
-                f"@SP\nA=M-1\nD=M\n@SEC_NEGATIVE{self.label_idx}\n"
-                f"D;JLT\n@SEC_POSITIVE{self.label_idx}\n"
-                f"D;JGT\n@BOTH_SAME{self.label_idx}\n"
+                f"@SP\nA=M-1\nD=M\n@SEC_NEGATIVE{self.label_idx}.{self.curr_function}\n"
+                f"D;JLT\n@SEC_POSITIVE{self.label_idx}.{self.curr_function}\n"
+                f"D;JGT\n@BOTH_SAME{self.label_idx}.{self.curr_function}\n"
                 f"0;JMP\n")
             # check if second number is positive (second is negative)
             self.output_stream.write(
-                f"(SEC_NEGATIVE{self.label_idx})\n@SP\nA=M-1\n"
-                f"A=A-1\nD=M\n@BOTH_SAME{self.label_idx}\n"
-                f"D;JLE\n@DIFFERENT{self.label_idx}\nD;JGT\n")
+                f"(SEC_NEGATIVE{self.label_idx}.{self.curr_function})\n@SP\nA=M-1\n"
+                f"A=A-1\nD=M\n@BOTH_SAME{self.label_idx}.{self.curr_function}\n"
+                f"D;JLE\n@DIFFERENT{self.label_idx}.{self.curr_function}\nD;JGT\n")
             # check if second number is positive (second is positive)
             self.output_stream.write(
-                f"(SEC_POSITIVE{self.label_idx})\n@SP\nA=M-1\n"
-                f"A=A-1\nD=M\n@BOTH_SAME{self.label_idx}\n"
-                f"D;JGE\n@DIFFERENT{self.label_idx}\nD;JLT\n")
+                f"(SEC_POSITIVE{self.label_idx}.{self.curr_function})\n@SP\nA=M-1\n"
+                f"A=A-1\nD=M\n@BOTH_SAME{self.label_idx}.{self.curr_function}\n"
+                f"D;JGE\n@DIFFERENT{self.label_idx}.{self.curr_function}\nD;JLT\n")
             # different signs (could be overflow)
-            self.output_stream.write(f"(DIFFERENT{self.label_idx})\n")
+            self.output_stream.write(f"(DIFFERENT{self.label_idx}.{self.curr_function})\n")
             if command in ["lt", "gt"]:
                 self.output_stream.write(
-                    f"@SP\nA=M-1\nD=M\n@TRUE{self.label_idx}\n"
-                    f"{jump_conditions[command]}\n@FALSE{self.label_idx}\n"
+                    f"@SP\nA=M-1\nD=M\n@TRUE{self.label_idx}.{self.curr_function}\n"
+                    f"{jump_conditions[command]}\n@FALSE{self.label_idx}.{self.curr_function}\n"
                     f"0;JMP\n")
             else:
-                self.output_stream.write(f"@FALSE{self.label_idx}\n0;JMP\n")
+                self.output_stream.write(f"@FALSE{self.label_idx}.{self.curr_function}\n0;JMP\n")
 
             # no overflow
             self.output_stream.write(
-                f"(BOTH_SAME{self.label_idx})\n@SP\nA=M-1\nD=M\nA=A-1\nD=D-M\n@TRUE{self.label_idx}\n"
-                f"{jump_conditions[command]}\n(FALSE{self.label_idx})\n@SP\nA=M-1\n"
-                f"A=A-1\nM=0\n@END{self.label_idx}\n0;JMP\n(TRUE{self.label_idx})\n"
-                f"@SP\nA=M-1\nA=A-1\nM=-1\n(END{self.label_idx})\n@SP\nM=M-1\n")
+                f"(BOTH_SAME{self.label_idx}.{self.curr_function})\n@SP\nA=M-1"
+                f"\nD=M\nA=A-1\nD=D-M\n@TRUE{self.label_idx}.{self.curr_function}\n"
+                f"{jump_conditions[command]}\n(FALSE{self.label_idx}.{self.curr_function})\n@SP\nA=M-1\n"
+                f"A=A-1\nM=0\n@END{self.label_idx}.{self.curr_function}\n0;JMP\n"
+                f"(TRUE{self.label_idx}.{self.curr_function})\n"
+                f"@SP\nA=M-1\nA=A-1\nM=-1\n(END{self.label_idx}.{self.curr_function})"
+                f"\n@SP\nM=M-1\n")
 
         self.label_idx += 1
 
@@ -245,7 +248,7 @@ class CodeWriter:
         # (return_address)      // injects the return address label into the code
         self.call_counter += 1
         self.output_stream.write(f"//writing call {function_name}\n")
-        for_return_address = f"{self.curr_function}$ret.{self.call_counter}"
+        for_return_address = f"{self.file_name}.{self.curr_function}$ret.{self.call_counter}"
         # push label address to the stack
         self.output_stream.write(
             f"@{for_return_address}\nD=A\n@SP\nA=M\nM=D\n@SP\nM=M+1\n")
@@ -254,15 +257,12 @@ class CodeWriter:
             self.output_stream.write(
                 f"@{elem}\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n")
         self.output_stream.write("@SP\nD=M\n")
-        # self.output_stream.write(f"@{n_args}\nD=A\n@5\nD=A-D\n@SP\nD=M-D\n@ARG\nM=D\n")  # ARG = SP-5-n_args
         for _ in range(n_args + 5):
             self.output_stream.write(f"D=D-1\n")
         self.output_stream.write(f"@ARG\nM=D\n")
         self.output_stream.write(f"@SP\nD=M\n@LCL\nM=D\n")  # LCL = SP
         self.output_stream.write(
             f"@{function_name}\n0;JMP\n")  # goto function_name
-        # print(self.curr_function)
-        # print("kkk")
         self.output_stream.write(
             f"({for_return_address})\n")  # (return_address)
 
@@ -283,11 +283,22 @@ class CodeWriter:
         # goto return_address           // go to the return address
         self.output_stream.write(f"//writing return\n")
         self.output_stream.write(f"@LCL\nD=M\n@frame\nM=D\n")  # frame = LCL
-        self.output_stream.write(f"@5\nD=A\n@frame\nD=M-D\nA=D\nD=M\n@return_address\nM=D\n") # return_address = *(frame-5)
-        self.write_push_pop("C_POP", "argument", 0) # *ARG = pop()
-        self.output_stream.write(f"@ARG\nD=M\nD=D+1\n@SP\nM=D\n") # SP = ARG + 1
-        self.output_stream.write(f"@frame\nD=M-1\nA=D\nD=M\n@THAT\nM=D\n") # THAT = *(frame-1)
-        self.output_stream.write(f"@2\nD=A\n@frame\nD=M-D\nA=D\nD=M\n@THIS\nM=D\n") # THIS = *(frame-2)
-        self.output_stream.write(f"@3\nD=A\n@frame\nD=M-D\nA=D\nD=M\n@ARG\nM=D\n")  # ARG = *(frame-3)
-        self.output_stream.write(f"@4\nD=A\n@frame\nD=M-D\nA=D\nD=M\n@LCL\nM=D\n")  # LCL = *(frame-4)
-        self.output_stream.write(f"@return_address\nA=M\n0;JMP\n") # goto return_address
+        self.output_stream.write(
+            f"@5\nD=A\n@frame\nD=M-D\nA=D\nD=M\n@return_address\nM=D\n")  # return_address = *(frame-5)
+        self.write_push_pop("C_POP", "argument", 0)  # *ARG = pop()
+        self.output_stream.write(
+            f"@ARG\nD=M\nD=D+1\n@SP\nM=D\n")  # SP = ARG + 1
+        self.output_stream.write(
+            f"@frame\nD=M-1\nA=D\nD=M\n@THAT\nM=D\n")  # THAT = *(frame-1)
+        self.output_stream.write(
+            f"@2\nD=A\n@frame\nD=M-D\nA=D\nD=M\n@THIS\nM=D\n")  # THIS = *(frame-2)
+        self.output_stream.write(
+            f"@3\nD=A\n@frame\nD=M-D\nA=D\nD=M\n@ARG\nM=D\n")  # ARG = *(frame-3)
+        self.output_stream.write(
+            f"@4\nD=A\n@frame\nD=M-D\nA=D\nD=M\n@LCL\nM=D\n")  # LCL = *(frame-4)
+        self.output_stream.write(
+            f"@return_address\nA=M\n0;JMP\n")  # goto return_address
+
+    def bootstrap(self) -> None:
+        self.output_stream.write(f"@256\nD=A\n@SP\nM=D\n")
+        self.write_call("Sys.init", 0)

@@ -41,18 +41,18 @@ M=0
 
     @R3 //we update the counter
     M=M+1
-    D=M  //and store the index
+    D=M-1  //and store the index
 
     @R14 //we check the adress of the first element
-    A=M
+    D=D+M
 
     @R4 //we save in R4 the updated adress of the next element
-    M=D+A
+    M=D
 
-    @R4 //we dereference the current element
     A=M
     D=M
     @R1
+    A=M
     D=D-M //we check if the current element is less than the min
     @NEW_MIN
     D;JLT //if so, set a new min
@@ -61,6 +61,7 @@ M=0
     A=M
     D=M
     @R2
+    A=M
     D=D-M //we check if the current element is greater than the max
     @NEW_MAX
     D;JGT //if so, set a new max
@@ -91,21 +92,26 @@ M=0
 
 (SWAP)
     @R1
+    A=M
     D=M
     
     @temp
     M=D
 
     @R2
+    A=M
     D=M
 
+
     @R1
+    A=M
     M=D
 
     @temp
     D=M
 
     @R2
+    A=M
     M=D
 
 //     @END
@@ -114,21 +120,4 @@ M=0
 
 // (END)
 //     @END
-//     0;JMP
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+//     0;JMP
