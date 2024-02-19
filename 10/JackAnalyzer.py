@@ -22,9 +22,37 @@ def analyze_file(
     """
     # Your code goes here!
     # It might be good to start by creating a new JackTokenizer and CompilationEngine:
-    # tokenizer = JackTokenizer(input_file)
-    # engine = CompilationEngine(tokenizer, output_file)
-    pass
+    tokenizer = JackTokenizer(input_file)
+    engine = CompilationEngine(tokenizer, output_file)
+    output_file.write("<tokens>\n")
+    while tokenizer.has_more_tokens():
+        # print(tokenizer.current_char_idx)
+        # print(tokenizer.current_line_idx)
+        # print("revach")
+        tokenizer.advance()
+        print(tokenizer.current_token)
+        token_type = tokenizer.token_type()
+        if token_type == "KEYWORD":
+            output_file.write("<keyword>")
+            output_file.write(f" {tokenizer.keyword().lower()} ")
+            output_file.write("</keyword>\n")
+        elif token_type == "SYMBOL":
+            output_file.write("<symbol>")
+            output_file.write(f" {tokenizer.symbol()} ")
+            output_file.write("</symbol>\n")
+        elif token_type == "INT_CONST":
+            output_file.write("<integerConstant>")
+            output_file.write(f" {tokenizer.int_val()} ")
+            output_file.write("</integerConstant>\n")
+        elif token_type == "IDENTIFIER":
+            output_file.write("<identifier>")
+            output_file.write(f" {tokenizer.identifier()} ")
+            output_file.write("</identifier>\n")
+        elif token_type == "STRING_CONST":
+            output_file.write("<stringConstant>")
+            output_file.write(f" {tokenizer.string_val()} ")
+            output_file.write("</stringConstant>\n")
+    output_file.write("</tokens>\n")
 
 
 if "__main__" == __name__:

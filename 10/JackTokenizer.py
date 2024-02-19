@@ -92,6 +92,9 @@ class JackTokenizer:
     Note that ^, # correspond to shiftleft and shiftright, respectively.
     """
 
+
+
+
     def __init__(self, input_stream: typing.TextIO) -> None:
         """Opens the input stream and gets ready to tokenize it.
 
@@ -100,25 +103,124 @@ class JackTokenizer:
         """
         # Your code goes here!
         # A good place to start is to read all the lines of the input:
-        # input_lines = input_stream.read().splitlines()
-        pass
+        self.input_lines = list(filter(
+            lambda x: x and not x.startswith("//"),
+            map(str.strip, input_stream.read().splitlines())))
+        self.input_lines = [line.split('//', 1)[0].rstrip() for line in self.input_lines]
 
-    def has_more_tokens(self) -> bool:
+        self.input_lines = self.remove_multi_line_comments(self.input_lines)
+        print(self.input_lines)
+        self.current_line = ""
+        self.current_line_idx = 0
+        self.current_char_idx = 0
+        self.current_char = ""
+        self.current_token = ""
+        self.keyword_list = ["class", "constructor", 'function', 'method',
+                             'field',
+                             'static', 'var', 'int', 'char', 'boolean', 'void',
+                             'true',
+                             'false', 'null', 'this', 'let', 'do', 'if',
+                             'else',
+                             'while', 'return']
+        self.symbol_list = ['{', '}', '(', ')', '[', ']', '.', ',', ';', '+',
+                            '-', '*', '/', '&', '|', '<', '>', '=', '~', '^',
+                            '#']
+        self.token_is_identifier = False
+        self.token_is_string = False
+
+    def has_more_tokens(self) -> bool:  # in all the input
         """Do we have more tokens in the input?
 
         Returns:
             bool: True if there are more tokens, False otherwise.
         """
-        # Your code goes here!
-        pass
+        # print(len(
+        #         self.input_lines))
+        # print(len(
+        #     self.current_line))
+        # print(self.current_char_idx)
+        # print(self.current_line_idx)
+        # print("revach")
+        if self.current_line_idx + 1 == len(
+                self.input_lines) and self.current_char_idx == len(
+            self.current_line):
+            return False
+        return True
+
+
+
 
     def advance(self) -> None:
         """Gets the next token from the input and makes it the current token. 
         This method should be called if has_more_tokens() is true. 
         Initially there is no current token.
         """
-        # Your code goes here!
-        pass
+        self.token_is_identifier = False
+        self.token_is_string = False
+        if not self.current_line:  # the very start
+            self.current_line = self.input_lines[self.current_line_idx]
+
+        if self.current_char_idx == len(self.current_line):  # last char in line
+            self.current_line_idx += 1
+            self.current_line = self.input_lines[self.current_line_idx]
+            self.current_char_idx = 0
+        self.current_char = self.current_line[self.current_char_idx]
+
+        while self.current_char == " ":  # char is blank space
+            self.current_char_idx += 1
+            self.current_char = self.current_line[self.current_char_idx]
+
+        if self.current_char in self.symbol_list:
+            self.current_token = self.current_char
+            self.current_char_idx += 1
+            return
+        elif self.current_char == '"':
+            self.get_string_token()
+        elif self.current_char.isdigit():
+            self.get_integer_token()
+            self.current_char_idx += 1
+            return
+        else:
+            self.get_token_till_next_blank_space()
+            return
+
+    def get_string_token(self):
+        token = ""
+        self.current_char_idx += 1
+        self.current_char = self.current_line[self.current_char_idx]
+        while self.current_char != '"':
+            token += self.current_char
+            self.current_char_idx += 1
+            self.current_char = self.current_line[self.current_char_idx]
+        self.current_char_idx += 1
+        self.current_token = token
+        self.token_is_string = True
+
+    def get_integer_token(self):
+        integer_string = ""
+        while self.current_char.isdigit():
+            integer_string += self.current_char
+            self.current_char_idx += 1
+            self.current_char = self.current_line[self.current_char_idx]
+        self.current_char_idx -= 1
+        self.current_token = integer_string
+
+    def get_token_till_next_blank_space(self):
+        token = ""
+        while self.current_char != " " and self.current_char not in self.symbol_list:
+            self.current_char = self.current_line[self.current_char_idx]
+            token += self.current_char
+            if token in self.keyword_list:
+                self.current_char_idx += 1
+                self.current_char = self.current_line[self.current_char_idx]
+                self.current_token = token
+                return
+            self.current_char_idx += 1
+        self.token_is_identifier = True
+        self.current_token = token[:-1]
+        self.current_char_idx -= 1
+
+
 
     def token_type(self) -> str:
         """
@@ -126,8 +228,16 @@ class JackTokenizer:
             str: the type of the current token, can be
             "KEYWORD", "SYMBOL", "IDENTIFIER", "INT_CONST", "STRING_CONST"
         """
-        # Your code goes here!
-        pass
+        if self.current_token in self.symbol_list:
+            return "SYMBOL"
+        elif self.current_token in self.keyword_list:
+            return "KEYWORD"
+        elif self.current_token[0].isdigit():
+            return "INT_CONST"
+        elif self.token_is_identifier:
+            return "IDENTIFIER"
+        elif self.token_is_string:
+            return "STRING_CONST"
 
     def keyword(self) -> str:
         """
@@ -139,7 +249,7 @@ class JackTokenizer:
             "IF", "ELSE", "WHILE", "RETURN", "TRUE", "FALSE", "NULL", "THIS"
         """
         # Your code goes here!
-        pass
+        return self.current_token.upper()
 
     def symbol(self) -> str:
         """
@@ -151,7 +261,13 @@ class JackTokenizer:
               '-' | '*' | '/' | '&' | '|' | '<' | '>' | '=' | '~' | '^' | '#'
         """
         # Your code goes here!
-        pass
+        if self.current_token == "<":
+            return "&lt;"
+        elif self.current_token == ">":
+            return "&gt;"
+        elif self.current_token == "&":
+            return "&amp;"
+        return self.current_token
 
     def identifier(self) -> str:
         """
@@ -164,7 +280,7 @@ class JackTokenizer:
                   identifiers, so 'self' cannot be an identifier, etc'.
         """
         # Your code goes here!
-        pass
+        return self.current_token
 
     def int_val(self) -> int:
         """
@@ -175,7 +291,7 @@ class JackTokenizer:
             integerConstant: A decimal number in the range 0-32767.
         """
         # Your code goes here!
-        pass
+        return int(self.current_token)
 
     def string_val(self) -> str:
         """
@@ -187,4 +303,41 @@ class JackTokenizer:
                       double quote or newline '"'
         """
         # Your code goes here!
-        pass
+        return self.current_token
+
+    def remove_multi_line_comments(self, input_lines):
+        preprocessed_lines = []
+        # Flag to determine if currently inside a multi-line comment
+        in_multiline_comment = False
+
+        # Iterate through each line
+        for line in input_lines:
+            # Check if the line contains a multi-line comment
+            if "/*" in line:
+                # Set the flag to True since we are inside a multi-line comment
+                in_multiline_comment = True
+                # Check if the multi-line comment ends on the same line
+                if "*/" in line:
+                    # Remove the portion of the line from the start to the end of the multi-line comment
+                    line = line[:line.index("/*")] + line[
+                                                     line.index("*/") + 2:]
+                    # Set the flag to False since the multi-line comment has ended
+                    in_multiline_comment = False
+                else:
+                    # Skip this line as it contains the start of a multi-line comment without the end
+                    continue
+            # Check if the line contains the end of a multi-line comment
+            elif "*/" in line:
+                # Remove the portion of the line from the start to the end of the multi-line comment
+                line = line[line.index("*/") + 2:]
+                # Set the flag to False since the multi-line comment has ended
+                in_multiline_comment = False
+            # If the line is inside a multi-line comment, skip it
+            if in_multiline_comment:
+                continue
+            # Add the preprocessed line to the list
+            preprocessed_lines.append(line.strip())
+
+        preprocessed_lines = list(
+            filter(lambda x: x != '', preprocessed_lines))
+        return preprocessed_lines
