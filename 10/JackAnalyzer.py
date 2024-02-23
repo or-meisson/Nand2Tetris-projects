@@ -31,6 +31,8 @@ def analyze_file(
         # print("revach")
         tokenizer.advance()
         print(tokenizer.current_token)
+
+
         token_type = tokenizer.token_type()
         if token_type == "KEYWORD":
             output_file.write("<keyword>")
@@ -53,6 +55,7 @@ def analyze_file(
             output_file.write(f" {tokenizer.string_val()} ")
             output_file.write("</stringConstant>\n")
     output_file.write("</tokens>\n")
+    engine.compile_class()
 
 
 if "__main__" == __name__:
