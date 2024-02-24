@@ -106,9 +106,15 @@ class JackTokenizer:
         self.input_lines = list(filter(
             lambda x: x and not x.startswith("//"),
             map(str.strip, input_stream.read().splitlines())))
-        self.input_lines = [line.split('//', 1)[0].rstrip() for line in self.input_lines]
 
+        # self.input_lines = [
+        #     line.split('//', 1)[0].rstrip() if not self.is_in_string else line for line
+        #     in self.input_lines]
+        # self.is_in_string = False
         self.input_lines = self.remove_multi_line_comments(self.input_lines)
+        # self.input_lines = [line.split('//', 1)[0].rstrip() for line in
+        #                     self.input_lines]
+        self.input_lines = [line.replace('\t', ' ') for line in self.input_lines]
         print(self.input_lines)
         self.current_line = ""
         self.current_line_idx = 0
@@ -155,12 +161,18 @@ class JackTokenizer:
         This method should be called if has_more_tokens() is true. 
         Initially there is no current token.
         """
+        # print(self.current_char_idx)
+
         self.token_is_identifier = False
         self.token_is_string = False
         if not self.current_line:  # the very start
             self.current_line = self.input_lines[self.current_line_idx]
+        # print(len(self.current_line))
+        # print(self.current_char_idx)
+        # print("revach")
 
         if self.current_char_idx == len(self.current_line):  # last char in line
+            # print("gets here")
             self.current_line_idx += 1
             self.current_line = self.input_lines[self.current_line_idx]
             self.current_char_idx = 0
@@ -169,12 +181,14 @@ class JackTokenizer:
         while self.current_char == " ":  # char is blank space
             self.current_char_idx += 1
             self.current_char = self.current_line[self.current_char_idx]
-
+        # print(self.current_char_idx)
+        # print("revach")
         if self.current_char in self.symbol_list:
             self.current_token = self.current_char
             self.current_char_idx += 1
             return
         elif self.current_char == '"':
+            # self.is_in_string = True
             self.get_string_token()
         elif self.current_char.isdigit():
             self.get_integer_token()
@@ -192,6 +206,7 @@ class JackTokenizer:
             token += self.current_char
             self.current_char_idx += 1
             self.current_char = self.current_line[self.current_char_idx]
+        # self.is_in_string = False
         self.current_char_idx += 1
         self.current_token = token
         self.token_is_string = True
@@ -206,19 +221,36 @@ class JackTokenizer:
         self.current_token = integer_string
 
     def get_token_till_next_blank_space(self):
+        end_of_line = False
         token = ""
         while self.current_char != " " and self.current_char not in self.symbol_list:
+            # print(self.current_char_idx)
+            if self.current_char_idx == len(self.current_line):
+                end_of_line = True
+                token += self.current_char
+                self.current_line_idx += 1
+                self.current_line = self.input_lines[self.current_line_idx]
+                self.current_char_idx = 0
+                break
             self.current_char = self.current_line[self.current_char_idx]
             token += self.current_char
-            if token in self.keyword_list:
-                self.current_char_idx += 1
-                self.current_char = self.current_line[self.current_char_idx]
-                self.current_token = token
-                return
+
             self.current_char_idx += 1
-        self.token_is_identifier = True
-        self.current_token = token[:-1]
-        self.current_char_idx -= 1
+
+        if token in self.keyword_list:
+            # self.current_char_idx += 1
+            # self.current_char = self.current_line[self.current_char_idx]
+            # self.current_token = token
+            # return
+            self.current_token = token[:-1]
+            if not end_of_line:
+                self.current_char_idx -= 1
+        else:
+            self.token_is_identifier = True
+            self.current_token = token[:-1]
+            if not end_of_line:
+
+                self.current_char_idx -= 1
 
 
 
@@ -232,12 +264,13 @@ class JackTokenizer:
             return "SYMBOL"
         elif self.current_token in self.keyword_list:
             return "KEYWORD"
-        elif self.current_token[0].isdigit():
-            return "INT_CONST"
+
         elif self.token_is_identifier:
             return "IDENTIFIER"
         elif self.token_is_string:
             return "STRING_CONST"
+        elif self.current_token[0].isdigit():
+            return "INT_CONST"
 
     def keyword(self) -> str:
         """
@@ -310,34 +343,57 @@ class JackTokenizer:
         # Flag to determine if currently inside a multi-line comment
         in_multiline_comment = False
 
+        # Flag to determine if currently inside a string
+        in_string = False
+
         # Iterate through each line
         for line in input_lines:
-            # Check if the line contains a multi-line comment
-            if "/*" in line:
-                # Set the flag to True since we are inside a multi-line comment
-                in_multiline_comment = True
+            processed_line = ""
+            i = 0
+
+            while i < len(line):
+                if line[i] == '"':
+                    # Toggle the in_string flag
+                    in_string = not in_string
+
+                # Check if the line contains a multi-line comment
+                if line[i:i + 2] == "/*" and not in_string:
+                    # Set the flag to True since we are inside a multi-line comment
+                    in_multiline_comment = True
+                    while i < len(line) and line[i:i + 2] != "*/":
+                        i += 1
+                    # Check if the multi-line comment ends on the same line
+                    if i < len(line):
+                        # Skip the multi-line comment
+                        i += 2
+                        # Set the flag to False since the multi-line comment has ended
+                        in_multiline_comment = False
+                        continue
+                    else:
+                        # Exit the loop if the multi-line comment continues onto the next line
+                        break
+
                 # Check if the multi-line comment ends on the same line
-                if "*/" in line:
-                    # Remove the portion of the line from the start to the end of the multi-line comment
-                    line = line[:line.index("/*")] + line[
-                                                     line.index("*/") + 2:]
+                if line[
+                   i:i + 2] == "*/" and in_multiline_comment and not in_string:
+                    i += 2
                     # Set the flag to False since the multi-line comment has ended
                     in_multiline_comment = False
-                else:
-                    # Skip this line as it contains the start of a multi-line comment without the end
                     continue
-            # Check if the line contains the end of a multi-line comment
-            elif "*/" in line:
-                # Remove the portion of the line from the start to the end of the multi-line comment
-                line = line[line.index("*/") + 2:]
-                # Set the flag to False since the multi-line comment has ended
-                in_multiline_comment = False
-            # If the line is inside a multi-line comment, skip it
-            if in_multiline_comment:
-                continue
+
+                if line[i:i + 2] == "//" and not in_string:
+                    # If we encounter '//' and not inside a string, we stop processing the line
+                    break
+
+                if not in_multiline_comment:
+                    processed_line += line[i]
+
+                i += 1
+
             # Add the preprocessed line to the list
-            preprocessed_lines.append(line.strip())
+            preprocessed_lines.append(processed_line.strip())
 
         preprocessed_lines = list(
             filter(lambda x: x != '', preprocessed_lines))
         return preprocessed_lines
+
