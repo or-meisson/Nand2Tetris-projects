@@ -25,54 +25,49 @@ class CompilationEngine:
         # output_stream.write("Hello world! \n")
         self.tokenizer = input_stream
         self.output_stream = output_stream
-        self. lexical_elements_dict = {"KEYWORD": 'keyword', "SYMBOL": 'symbol',
-                          "IDENTIFIER": 'identifier',
-                          "INT_CONST": 'integerConstant',
-                          "STRING_CONST": 'stringConstant'}
-
-
-
+        self.binary_ops = ["+", "-", "*", "/", "&", "|",
+         "<", ">", "="]
+        self.lexical_elements_dict = {"KEYWORD": 'keyword',
+                                      "IDENTIFIER": 'identifier',
+                                      "SYMBOL": 'symbol',
+                                      "INT_CONST": 'integerConstant',
+                                      "STRING_CONST": 'stringConstant'
+                                      }
 
     def compile_class(self) -> None:
         """Compiles a complete class."""
         # Your code goes here!
         self.output_stream.write("<class>\n")
         self.tokenizer.advance()
-        # print(self.tokenizer.current_token)
         self.process(["class"])
         self.process([], True)
         self.process(["{"])
         while self.tokenizer.has_more_tokens():
             if self.tokenizer.current_token in ["static", "field"]:
                 self.compile_class_var_dec()
-            elif self.tokenizer.current_token in ["constructor", "function", "method"]:
+            elif self.tokenizer.current_token in ["constructor", "function",
+                                                  "method"]:
                 self.compile_subroutine()
         self.process(["}"], False, True)
         self.output_stream.write("</class>\n")
-
-
-
-
-
 
     def compile_class_var_dec(self) -> None:
         """Compiles a static declaration or a field declaration."""
         # Your code goes here!
         self.output_stream.write("<classVarDec>\n")
         self.process(["static", "field"])
-        self.process(["int", "char", "boolean"], True)
-        self.process([], True) #the vars name
+        self.process(["boolean", "int", "char"], True)
+        self.commas_while_loop()
+        self.output_stream.write("</classVarDec>\n")
+
+    def commas_while_loop(self) -> None:
+        self.process([], True)  # the vars name
+
         while self.tokenizer.current_token == ",":
             self.process([","])
             self.process([], True)
+
         self.process([";"])
-        self.output_stream.write("</classVarDec>\n")
-
-
-
-
-
-
 
     def compile_subroutine(self) -> None:
         """
@@ -86,8 +81,15 @@ class CompilationEngine:
         self.process(["void", "int", "char", "boolean"], True)
         self.process([], True)
         self.process(["("])
+
         self.compile_parameter_list()
         self.process([")"])
+
+        self.compile_subroutine_body()
+
+        self.output_stream.write("</subroutineDec>\n")
+
+    def compile_subroutine_body(self):
         self.output_stream.write("<subroutineBody>\n")
         self.process(["{"])
         while self.tokenizer.current_token == "var":
@@ -95,15 +97,6 @@ class CompilationEngine:
         self.compile_statements()
         self.process(["}"])
         self.output_stream.write("</subroutineBody>\n")
-        self.output_stream.write("</subroutineDec>\n")
-
-
-
-
-
-
-
-
 
 
     def compile_parameter_list(self) -> None:
@@ -111,20 +104,20 @@ class CompilationEngine:
         enclosing "()".
         """
         # Your code goes here!
-        self.output_stream.write("<parameterList>\n")
-        if self.tokenizer.current_token != ")":
 
-            self.process(["int", "char", "boolean"], True)
+        self.output_stream.write("<parameterList>\n")
+        if self.tokenizer.current_token == ")":
+            self.output_stream.write("</parameterList>\n")
+            return
+        else:
+
+            self.process(["boolean", "int", "char"], True)
             self.process([], True)
             while self.tokenizer.current_token == ",":
                 self.process([","])
-                self.process(["int", "char", "boolean"], True)
+                self.process(["boolean", "int", "char"], True)
                 self.process([], True)
-        self.output_stream.write("</parameterList>\n")
-
-
-
-
+            self.output_stream.write("</parameterList>\n")
 
 
     def compile_var_dec(self) -> None:
@@ -132,17 +125,9 @@ class CompilationEngine:
         # Your code goes here!
         self.output_stream.write("<varDec>\n")
         self.process(["var"])
-        self.process(["int", "char", "boolean"], True)
-        self.process([], True)
-        while self.tokenizer.current_token == ",":
-            self.process([","])
-            self.process([], True)
-        self.process([";"])
+        self.process(["boolean", "int", "char"], True)
+        self.commas_while_loop()
         self.output_stream.write("</varDec>\n")
-
-
-
-
 
     def compile_statements(self) -> None:
         """Compiles a sequence of statements, not including the enclosing 
@@ -151,21 +136,18 @@ class CompilationEngine:
         # Your code goes here!
         self.output_stream.write("<statements>\n")
         while self.tokenizer.current_token in ["do", "let", "while",
-                                            "return", "if"]:
+                                               "return", "if"]:
             if self.tokenizer.current_token == "let":
                 self.compile_let()
             elif self.tokenizer.current_token == "if":
                 self.compile_if()
-            elif self.tokenizer.current_token == "while":
-                self.compile_while()
             elif self.tokenizer.current_token == "do":
                 self.compile_do()
             elif self.tokenizer.current_token == "return":
                 self.compile_return()
+            elif self.tokenizer.current_token == "while":
+                self.compile_while()
         self.output_stream.write("</statements>\n")
-
-
-
 
     def compile_do(self) -> None:
         """Compiles a do statement."""
@@ -179,71 +161,60 @@ class CompilationEngine:
 
         self.output_stream.write("</doStatement>\n")
 
-
-
-#todo too similar
-
     def compile_let(self) -> None:
         """Compiles a let statement."""
         # Your code goes here!
         self.output_stream.write("<letStatement>\n")
         self.process(["let"])
         self.process([], True)
+
         if self.tokenizer.current_token == "[":
             self.process(["["])
             self.compile_expression()
             self.process(["]"])
+
         self.process(["="])
         self.compile_expression()
         self.process([";"])
         self.output_stream.write("</letStatement>\n")
-
-
-
-
-
-
 
     def compile_while(self) -> None:
         """Compiles a while statement."""
         # Your code goes here!
         self.output_stream.write("<whileStatement>\n")
         self.process(["while"])
+
         self.process(["("])
         self.compile_expression()
         self.process([")"])
+
         self.process(["{"])
         self.compile_statements()
         self.process(["}"])
+
         self.output_stream.write("</whileStatement>\n")
 
+    def process(self, strings, is_identifier=False, is_last=False):
+        if self.tokenizer.current_token in strings or is_identifier:
+            self.print_xml_token()
+        else:
+            print("syntax error")
+        if not is_last:
+            self.tokenizer.advance()
 
-
-    def write_token(self):
-        if self.tokenizer.token_type() in ["KEYWORD" ,"IDENTIFIER", "INT_CONST", "STRING_CONST"]:
-            self.output_stream.write\
+    def print_xml_token(self):
+        if self.tokenizer.token_type() in ["KEYWORD", "IDENTIFIER",
+                                           "INT_CONST", "STRING_CONST"]:
+            self.output_stream.write \
                 (f"<{self.lexical_elements_dict[self.tokenizer.token_type()]}>"
                  f" {self.tokenizer.current_token}"
                  f" </{self.lexical_elements_dict[self.tokenizer.token_type()]}>\n")
         elif self.tokenizer.token_type() == "SYMBOL":
-            self.output_stream.write\
+            self.output_stream.write \
                 (f"<{self.lexical_elements_dict[self.tokenizer.token_type()]}>"
                  f" {self.tokenizer.symbol()}"
                  f" </{self.lexical_elements_dict[self.tokenizer.token_type()]}>\n")
 
-
-
-    def process(self, strings, is_identifier=False, is_last=False):
-        # print(self.tokenizer.current_token)
-        if self.tokenizer.current_token in strings or is_identifier:
-            # print(self.tokenizer.current_token)
-
-            self.write_token()
-        else:
-            # print(self.tokenizer.current_token)
-            raise SyntaxError
-        if not is_last:
-            self.tokenizer.advance()
 
 
     def compile_return(self) -> None:
@@ -252,9 +223,7 @@ class CompilationEngine:
         self.output_stream.write("<returnStatement>\n")
         self.process(["return"])
         if self.tokenizer.current_token != ";":
-            # print(self.tokenizer.current_token)
             self.compile_expression()
-
         self.process([";"])
         self.output_stream.write("</returnStatement>\n")
 
@@ -262,6 +231,7 @@ class CompilationEngine:
         """Compiles a if statement, possibly with a trailing else clause."""
         # Your code goes here!
         self.output_stream.write("<ifStatement>\n")
+
         self.process(["if"])
         self.process(["("])
         self.compile_expression()
@@ -269,25 +239,26 @@ class CompilationEngine:
         self.process(["{"])
         self.compile_statements()
         self.process(["}"])
+
         if self.tokenizer.current_token == "else":
             self.process(["else"])
             self.process(["{"])
             self.compile_statements()
             self.process(["}"])
+
         self.output_stream.write("</ifStatement>\n")
 
-    def compile_expression(self) -> None: #expression
+    def compile_expression(self) -> None:  # expression
         """Compiles an expression."""
         # Your code goes here!
         self.output_stream.write("<expression>\n")
         self.compile_term()
-        while self.tokenizer.current_token in ["+", "-", "*", "/", "&", "|", "<", ">", "="]:
+        while self.tokenizer.current_token in self.binary_ops:
             self.compile_op()
             self.compile_term()
         self.output_stream.write("</expression>\n")
 
-
-    def compile_term(self) -> None: #expression
+    def compile_term(self) -> None:  # expression
         """Compiles a term. 
         This routine is faced with a slight difficulty when
         trying to decide between some of the alternative parsing rules.
@@ -311,7 +282,7 @@ class CompilationEngine:
             self.process(["("])
             self.compile_expression()
             self.process([")"])
-        elif self.tokenizer.token_type() == "IDENTIFIER": #varName
+        elif self.tokenizer.token_type() == "IDENTIFIER":  # varName
             self.process([], True)
 
             if self.tokenizer.current_token == "[":
@@ -329,9 +300,7 @@ class CompilationEngine:
         # self.process([], True)
         self.output_stream.write("</term>\n")
 
-
-
-    def compile_expression_list(self) -> None: #expression
+    def compile_expression_list(self) -> None:  # expression
         """Compiles a (possibly empty) comma-separated list of expressions."""
         # Your code goes here!
         self.output_stream.write("<expressionList>\n")
@@ -345,28 +314,23 @@ class CompilationEngine:
             self.compile_expression()
         self.output_stream.write("</expressionList>\n")
 
-
-
     def compile_op(self) -> None:
         self.process(["+", "-", "*", "/", "&", "|", "<", ">", "="])
-
 
     def compile_unary_op(self) -> None:
         self.process(["-", "~", "^", "#"])
 
-
     def compile_subroutine_call(self):
-
 
         if self.tokenizer.current_token == "(":
             self.process(["("])
             self.compile_expression_list()
             self.process([")"])
         else:
-            # self.process([], True)
             self.process(['.'])
             self.process([], True)
             self.process(["("])
             self.compile_expression_list()
             self.process([")"])
+
 

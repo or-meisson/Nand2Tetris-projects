@@ -19,11 +19,11 @@ class JackTokenizer:
     tokens may be separated by an arbitrary number of whitespace characters, 
     and comments, which are ignored. There are three possible comment formats: 
     /* comment until closing */ , /** API comment until closing */ , and 
-    // comment until the line’s end.
+    // comment until the lines end.
 
-    - ‘xxx’: quotes are used for tokens that appear verbatim (‘terminals’).
+    - xxx: quotes are used for tokens that appear verbatim (terminals).
     - xxx: regular typeface is used for names of language constructs 
-           (‘non-terminals’).
+           (non-terminals).
     - (): parentheses are used for grouping of language constructs.
     - x | y: indicates that either x or y can appear.
     - x?: indicates that x appears 0 or 1 times.
@@ -115,7 +115,7 @@ class JackTokenizer:
         # self.input_lines = [line.split('//', 1)[0].rstrip() for line in
         #                     self.input_lines]
         self.input_lines = [line.replace('\t', ' ') for line in self.input_lines]
-        print(self.input_lines)
+        # print(self.input_lines)
         self.current_line = ""
         self.current_line_idx = 0
         self.current_char_idx = 0
@@ -140,13 +140,6 @@ class JackTokenizer:
         Returns:
             bool: True if there are more tokens, False otherwise.
         """
-        # print(len(
-        #         self.input_lines))
-        # print(len(
-        #     self.current_line))
-        # print(self.current_char_idx)
-        # print(self.current_line_idx)
-        # print("revach")
         if self.current_line_idx + 1 == len(
                 self.input_lines) and self.current_char_idx == len(
             self.current_line):
@@ -161,18 +154,11 @@ class JackTokenizer:
         This method should be called if has_more_tokens() is true. 
         Initially there is no current token.
         """
-        # print(self.current_char_idx)
-
         self.token_is_identifier = False
         self.token_is_string = False
         if not self.current_line:  # the very start
             self.current_line = self.input_lines[self.current_line_idx]
-        # print(len(self.current_line))
-        # print(self.current_char_idx)
-        # print("revach")
-
         if self.current_char_idx == len(self.current_line):  # last char in line
-            # print("gets here")
             self.current_line_idx += 1
             self.current_line = self.input_lines[self.current_line_idx]
             self.current_char_idx = 0
@@ -181,14 +167,11 @@ class JackTokenizer:
         while self.current_char == " ":  # char is blank space
             self.current_char_idx += 1
             self.current_char = self.current_line[self.current_char_idx]
-        # print(self.current_char_idx)
-        # print("revach")
         if self.current_char in self.symbol_list:
             self.current_token = self.current_char
             self.current_char_idx += 1
             return
         elif self.current_char == '"':
-            # self.is_in_string = True
             self.get_string_token()
         elif self.current_char.isdigit():
             self.get_integer_token()
@@ -206,7 +189,6 @@ class JackTokenizer:
             token += self.current_char
             self.current_char_idx += 1
             self.current_char = self.current_line[self.current_char_idx]
-        # self.is_in_string = False
         self.current_char_idx += 1
         self.current_token = token
         self.token_is_string = True
@@ -224,7 +206,6 @@ class JackTokenizer:
         end_of_line = False
         token = ""
         while self.current_char != " " and self.current_char not in self.symbol_list:
-            # print(self.current_char_idx)
             if self.current_char_idx == len(self.current_line):
                 end_of_line = True
                 token += self.current_char
@@ -238,10 +219,6 @@ class JackTokenizer:
             self.current_char_idx += 1
 
         if token in self.keyword_list:
-            # self.current_char_idx += 1
-            # self.current_char = self.current_line[self.current_char_idx]
-            # self.current_token = token
-            # return
             self.current_token = token[:-1]
             if not end_of_line:
                 self.current_char_idx -= 1
@@ -350,12 +327,10 @@ class JackTokenizer:
         for line in input_lines:
             processed_line = ""
             i = 0
-
             while i < len(line):
                 if line[i] == '"':
                     # Toggle the in_string flag
                     in_string = not in_string
-
                 # Check if the line contains a multi-line comment
                 if line[i:i + 2] == "/*" and not in_string:
                     # Set the flag to True since we are inside a multi-line comment
@@ -372,7 +347,6 @@ class JackTokenizer:
                     else:
                         # Exit the loop if the multi-line comment continues onto the next line
                         break
-
                 # Check if the multi-line comment ends on the same line
                 if line[
                    i:i + 2] == "*/" and in_multiline_comment and not in_string:
@@ -380,16 +354,12 @@ class JackTokenizer:
                     # Set the flag to False since the multi-line comment has ended
                     in_multiline_comment = False
                     continue
-
                 if line[i:i + 2] == "//" and not in_string:
                     # If we encounter '//' and not inside a string, we stop processing the line
                     break
-
                 if not in_multiline_comment:
                     processed_line += line[i]
-
                 i += 1
-
             # Add the preprocessed line to the list
             preprocessed_lines.append(processed_line.strip())
 
