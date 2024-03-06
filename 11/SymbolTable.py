@@ -17,14 +17,19 @@ class SymbolTable:
     def __init__(self) -> None:
         """Creates a new empty symbol table."""
         # Your code goes here!
-        pass
+        self.my_symbol_table = {}
+        self.counts = {"STATIC": 0, "FIELD": 0, "ARG": 0, "VAR": 0}
 
     def start_subroutine(self) -> None:
         """Starts a new subroutine scope (i.e., resets the subroutine's 
         symbol table).
         """
         # Your code goes here!
-        pass
+        self.my_symbol_table.clear()
+        self.counts["ARG"] = 0
+        self.counts["VAR"] = 0
+        self.counts["STATIC"] = 0
+        self.counts["FIELD"] = 0
 
     def define(self, name: str, type: str, kind: str) -> None:
         """Defines a new identifier of a given name, type and kind and assigns 
@@ -38,7 +43,9 @@ class SymbolTable:
             "STATIC", "FIELD", "ARG", "VAR".
         """
         # Your code goes here!
-        pass
+        index = self.counts[kind]
+        self.counts[kind] += 1
+        self.my_symbol_table[name] = {"type": type, "kind": kind, "index": index}
 
     def var_count(self, kind: str) -> int:
         """
@@ -50,7 +57,7 @@ class SymbolTable:
             the current scope.
         """
         # Your code goes here!
-        pass
+        return self.counts[kind]
 
     def kind_of(self, name: str) -> str:
         """
@@ -62,7 +69,9 @@ class SymbolTable:
             if the identifier is unknown in the current scope.
         """
         # Your code goes here!
-        pass
+        if name in self.my_symbol_table:
+            return self.my_symbol_table[name]["kind"]
+        return None
 
     def type_of(self, name: str) -> str:
         """
@@ -73,7 +82,9 @@ class SymbolTable:
             str: the type of the named identifier in the current scope.
         """
         # Your code goes here!
-        pass
+        if name in self.my_symbol_table:
+            return self.my_symbol_table[name]["type"]
+        return None
 
     def index_of(self, name: str) -> int:
         """
@@ -84,4 +95,6 @@ class SymbolTable:
             int: the index assigned to the named identifier.
         """
         # Your code goes here!
-        pass
+        if name in self.my_symbol_table:
+            return self.my_symbol_table[name]["index"]
+        return None
