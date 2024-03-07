@@ -10,7 +10,6 @@ from SymbolTable import SymbolTable
 from VMWriter import VMWriter
 
 
-
 class CompilationEngine:
     """Gets input from a JackTokenizer and emits its parsed structure into an
     output stream.
@@ -26,11 +25,13 @@ class CompilationEngine:
         # Your code goes here!
         # Note that you can write to output_stream like so:
         # output_stream.write("Hello world! \n")
+        # self.all_methods = []
+        self.what_to_return = None
         self.class_name = None
         self.tokenizer = input_stream
         self.output_stream = output_stream
         self.binary_ops = ["+", "-", "*", "/", "&", "|",
-         "<", ">", "="]
+                           "<", ">", "="]
         self.lexical_elements_dict = {"KEYWORD": 'keyword',
                                       "IDENTIFIER": 'identifier',
                                       "SYMBOL": 'symbol',
@@ -40,16 +41,17 @@ class CompilationEngine:
         self.class_symbol_table = SymbolTable()
         self.subroutine_symbol_table = SymbolTable()
         self.vm_writer = VMWriter(output_stream)
-        self.binary_operators_dict = {"+": "add", "-": "sub", "*": "call Math.multiply 2",
-                               "/": "call Math.divide 2", "&": "and", "|": "or",
-                               "<": "lt", ">": "gt", "=": "eq"}
-        self.unary_operators_dict = {"-": "neg", "~": "not", "#": "shiftright", "^": "shiftleft"}
+        self.binary_operators_dict = {"+": "add", "-": "sub",
+                                      "*": "call Math.multiply 2",
+                                      "/": "call Math.divide 2", "&": "and",
+                                      "|": "or",
+                                      "<": "lt", ">": "gt", "=": "eq"}
+        self.unary_operators_dict = {"-": "neg", "~": "not", "#": "shiftright",
+                                     "^": "shiftleft"}
         self.kinds_dict = {"field": "this", "static": "static",
-                          "arg": "arg", "var": "local"} #todo check if this is correct
+                           "arg": "argument",
+                           "var": "local"}  # todo check if this is correct
         self.label_counter = 0
-
-
-
 
     def compile_class(self) -> None:
         """Compiles a complete class."""
@@ -64,8 +66,10 @@ class CompilationEngine:
         while self.tokenizer.has_more_tokens():
             if self.tokenizer.current_token in ["static", "field"]:
                 self.compile_class_var_dec()
+
             elif self.tokenizer.current_token in ["constructor", "function",
                                                   "method"]:
+                # print("current func" + self.tokenizer.current_token)
 
                 self.compile_subroutine()
 
@@ -78,17 +82,26 @@ class CompilationEngine:
         self.process(["static", "field"])
         type_ = self.tokenizer.current_token
         self.process(["boolean", "int", "char"], True)
-        self.commas_while_loop(kind, type_)
+        self.commas_while_loop(kind, type_, True)
 
-    def commas_while_loop(self, kind, type_) -> None:
+    def commas_while_loop(self, kind, type_, is_class) -> None:  # maybe it was here
         name = self.tokenizer.current_token
         self.process([], True)  # the vars name
-        self.class_symbol_table.define(name, type_, kind, )
-        while self.tokenizer.current_token == ",":
-            self.process([","])
-            name = self.tokenizer.current_token
-            self.process([], True)
+        # print(kind)
+        if is_class:
             self.class_symbol_table.define(name, type_, kind)
+            while self.tokenizer.current_token == ",":
+                self.process([","])
+                name = self.tokenizer.current_token
+                self.process([], True)
+                self.class_symbol_table.define(name, type_, kind)
+        else:
+            self.subroutine_symbol_table.define(name, type_, kind)
+            while self.tokenizer.current_token == ",":
+                self.process([","])
+                name = self.tokenizer.current_token
+                self.process([], True)
+                self.subroutine_symbol_table.define(name, type_, kind)
 
         self.process([";"])
 
@@ -102,67 +115,83 @@ class CompilationEngine:
         # self.output_stream.write("<subroutineDec>\n")
         self.subroutine_symbol_table.start_subroutine()
         subroutine_type = self.tokenizer.current_token
+        # print(subroutine_type)
         self.process(["constructor", "function", "method"])
 
-        what_to_return = self.tokenizer.current_token
+        self.what_to_return = self.tokenizer.current_token
         self.process(["void", "int", "char", "boolean"], True)
         name = self.tokenizer.current_token
         self.process([], True)
         self.process(["("])
-
+        # print("hello")
         if subroutine_type == "function":
+            # self.output_stream.write("function ")
 
             self.compile_parameter_list()
             self.process([")"])
             self.process(["{"])
 
             while self.tokenizer.current_token == "var":
-
                 self.compile_var_dec()
-
-            local_vars = self.class_symbol_table.var_count(
+            # self.output_stream.write("what ")
+            local_vars = self.subroutine_symbol_table.var_count(
                 "VAR")  # todo check if this is correct
-            self.vm_writer.write_function(name, local_vars)
+            # print(local_vars)
+            # print(f"{self.class_name}.{name}")
 
+            self.vm_writer.write_function(f"{self.class_name}.{name}",
+                                          local_vars)
+            # self.vm_writer.write_function(name, local_vars)
+            # self.output_stream.write("what is this")
             self.compile_statements()
 
             self.process(["}"])
-
         if subroutine_type == "method":
 
-            #add to list what?
             self.subroutine_symbol_table.define("this", self.class_name, "arg")
             self.compile_parameter_list()
             self.process([")"])
-            self.compile_subroutine_body()
+            # self.compile_subroutine_body()
             self.process("{")
 
             while self.tokenizer.current_token == "var":
                 self.compile_var_dec()
-                local_vars = self.class_symbol_table.var_count("VAR")  # todo check if this is correct
-                self.vm_writer.write_function(name, local_vars)
-                self.vm_writer.write_push("arg", 0)
-                self.vm_writer.write_pop("pointer", 0)
-                self.compile_statements()
-                self.process(["}"])
-
+            local_vars = self.subroutine_symbol_table.var_count(
+                "VAR")  # todo check if this is correct
+            self.vm_writer.write_function(f"{self.class_name}.{name}",
+                                          local_vars)
+            self.vm_writer.write_push("argument", 0)
+            self.vm_writer.write_pop("pointer", 0)
+            self.compile_statements()
+            self.process(["}"])
+            # self.all_methods.append(name)
 
         if subroutine_type == "constructor":
-            local_vars = self.class_symbol_table.var_count("VAR") #todo check if this is correct
-            self.vm_writer.write_function(name, local_vars)
 
-            self.vm_writer.write_push("constant", self.class_symbol_table.var_count("field"))
+            local_var = self.class_symbol_table.var_count(
+                "VAR")  # todo check if this is correct
+            self.vm_writer.write_function(f"{self.class_name}.{name}",
+                                          local_var)
+            self.vm_writer.write_push("constant",
+                                      self.class_symbol_table.var_count(
+                                          "FIELD"))
+            self.compile_parameter_list()
             self.vm_writer.write_call("Memory.alloc", 1)
             self.vm_writer.write_pop("pointer", 0)
+            self.process([")"])
+            self.process(["{"])
+            # n_fields = self.class_symbol_table.var_count("FIELD")
+            # self.vm_writer.write_push("constant", n_fields)
+
             while self.tokenizer.current_token == "var":
                 self.compile_var_dec()
             self.compile_statements()
+            # print(self.tokenizer.current_token)
             self.process(["}"])
             self.vm_writer.write_push("pointer", 0)
-            self.vm_writer.write_return() #todo check if this is correct
+            # print("im here!")
 
-
-
+            # self.vm_writer.write_return()  # todo check if this is correct
 
         # self.output_stream.write("</subroutineDec>\n")
 
@@ -172,7 +201,6 @@ class CompilationEngine:
             self.compile_var_dec()
         self.compile_statements()
         self.process(["}"])
-
 
     def compile_parameter_list(self) -> None:
         """Compiles a (possibly empty) parameter list, not including the 
@@ -196,7 +224,6 @@ class CompilationEngine:
                 self.process([], True)
                 self.subroutine_symbol_table.define(name, type_, "arg")
 
-
     def compile_var_dec(self) -> None:
         """Compiles a var declaration."""
         # Your code goes here!
@@ -207,7 +234,7 @@ class CompilationEngine:
         type_ = self.tokenizer.current_token
         self.process(["boolean", "int", "char"], True)
 
-        self.commas_while_loop(kind, type_)
+        self.commas_while_loop(kind, type_, False)
 
     def compile_statements(self) -> None:
         """Compiles a sequence of statements, not including the enclosing 
@@ -231,59 +258,111 @@ class CompilationEngine:
         """Compiles a do statement."""
         # Your code goes here!
         self.process(["do"])
-
-        name = self.tokenizer.current_token #todo i think it is a name?
-        print(name)
+        # self.output_stream.write("<doStatement>\n")
+        name = self.tokenizer.current_token  # todo i think it is a name?
         self.process([], True)
-        self.compile_subroutine_call(name) #todo change to expression?
+        self.compile_subroutine_call(name)  # todo change to expression?
         self.vm_writer.write_pop("temp", 0)
 
         self.process([";"])
 
-
-    def compile_let(self) -> None:
+    def compile_let(self) -> None:  # todo got it from here
         """Compiles a let statement."""
         # Your code goes here!
         self.process(["let"])
         name = self.tokenizer.current_token
+        # print(name)
         self.process([], True)
+        # self.output_stream.write("<letStatement>\n")
 
+        # check if it is an array
         if self.tokenizer.current_token == "[":
+            try:
+                self.vm_writer.write_push(
+                    self.kinds_dict[
+                        self.subroutine_symbol_table.kind_of(name)],
+                    self.subroutine_symbol_table.index_of(name))
+            except:
+                #todo maybe problem here pong
+                self.vm_writer.write_push(
+                    self.kinds_dict[self.class_symbol_table.kind_of(name)],
+                    self.class_symbol_table.index_of(name))
+
             self.process(["["])
             self.compile_expression()
-            self.vm_writer.write_pop(self.kinds_dict[self.subroutine_symbol_table.kind_of(name)],
-                                     self.subroutine_symbol_table.index_of(name)) #todo is this the right dict?
 
-            self.process(["]"]) #todo array?
+            self.vm_writer.write_arithmetic("add")
+            self.process(["]"])
+            self.process(["="])
+            self.compile_expression()
+            self.vm_writer.write_pop("temp", 0)
+            self.vm_writer.write_pop("pointer", 1)
+            self.vm_writer.write_push("temp", 0)
+            self.vm_writer.write_pop("that", 0)
+        else:
 
-        self.process(["="])
-        self.compile_expression()
-        self.vm_writer.write_pop(
-            self.kinds_dict[self.subroutine_symbol_table.kind_of(name)],
-            self.subroutine_symbol_table.index_of(
-                name))  # todo is this the right dict?
+            # try:  # check if in the subroutine table
+            #     self.vm_writer.write_pop(self.kinds_dict[
+            #                                  self.subroutine_symbol_table.kind_of(
+            #                                      name)],
+            #                              self.subroutine_symbol_table.index_of(
+            #                                  name))  # todo is this the right dict?
+            # except:  # if not in the subroutine table, it is in the class table
+            #     self.vm_writer.write_pop(
+            #         self.kinds_dict[self.class_symbol_table.kind_of(name)],
+            #         self.class_symbol_table.index_of(name))
+
+            # self.output_stream.write("<letStatement>\n")
+            self.process(["="])
+            self.compile_expression()
+            # self.output_stream.write("pop down here\n")
+            # print(name)
+            # print(self.class_symbol_table.my_symbol_table)
+            # print(self.subroutine_symbol_table.my_symbol_table)
+            try:  # check if in the subroutine table
+                self.vm_writer.write_pop(
+                    self.kinds_dict[
+                        self.subroutine_symbol_table.kind_of(name)],
+                    self.subroutine_symbol_table.index_of(
+                        name))  # todo is this the right dict?
+            except:  # if not in the subroutine table, it is in the class table
+                # # self.output_stream.write("gere\n")
+                # print("hi")
+                # print(self.class_symbol_table.kind_of(name))
+                # print(self.kinds_dict[self.class_symbol_table.kind_of(name)])
+                self.vm_writer.write_pop(
+                    self.kinds_dict[self.class_symbol_table.kind_of(name)],
+                    self.class_symbol_table.index_of(name))
+            # self.output_stream.write("pop up here\n")
+        # self.output_stream.write("</letStatement>\n")
         self.process([";"])
+        # print("gets here")
 
     def compile_while(self) -> None:
         """Compiles a while statement."""
         # Your code goes here!
+        label_counter = self.label_counter  # save it won't change
         self.process(["while"])
-        self.vm_writer.write_label(f"label1.{self.label_counter}")
+        self.vm_writer.write_label(
+            f"{self.class_name}.label1.{label_counter}")
 
         self.process(["("])
         self.compile_expression()
         self.process([")"])
 
         self.vm_writer.write_arithmetic("not")
-        self.vm_writer.write_if(f"label2.{self.label_counter}")
+        self.vm_writer.write_if(
+            f"{self.class_name}.label2.{label_counter}")
 
         self.process(["{"])
         self.compile_statements()
         self.process(["}"])
 
-        self.vm_writer.write_goto(f"label1.{self.label_counter}")
-        self.vm_writer.write_label(f"label2.{self.label_counter}")
-
+        self.vm_writer.write_goto(
+            f"{self.class_name}.label1.{label_counter}")
+        self.vm_writer.write_label(
+            f"{self.class_name}.label2.{label_counter}")
+        self.label_counter += 1
 
     def process(self, strings, is_identifier=False, is_last=False):
         if self.tokenizer.current_token not in strings and not is_identifier:
@@ -304,35 +383,39 @@ class CompilationEngine:
     #              f" {self.tokenizer.symbol()}"
     #              f" </{self.lexical_elements_dict[self.tokenizer.token_type()]}>\n")
 
-
-
     def compile_return(self) -> None:
         """Compiles a return statement."""
         # Your code goes here!
+
         self.process(["return"])
         if self.tokenizer.current_token != ";":
             self.compile_expression()
+        if self.what_to_return == "void":
+            self.vm_writer.write_push("constant", 0)
         self.vm_writer.write_return()
         self.process([";"])
 
     def compile_if(self) -> None:
         """Compiles a if statement, possibly with a trailing else clause."""
         # Your code goes here!
-
+        label_counter = self.label_counter  # save it won't change
         self.process(["if"])
         self.process(["("])
         self.compile_expression()
         self.process([")"])
 
         self.vm_writer.write_arithmetic("not")
-        self.vm_writer.write_if(f"label1.{self.label_counter}")
+        self.vm_writer.write_if(
+            f"{self.class_name}.label1.{label_counter}")
 
         self.process(["{"])
         self.compile_statements()
         self.process(["}"])
 
-        self.vm_writer.write_goto(f"label2.{self.label_counter}")
-        self.vm_writer.write_label(f"label1.{self.label_counter}")
+        self.vm_writer.write_goto(
+            f"{self.class_name}.label2.{label_counter}")
+        self.vm_writer.write_label(
+            f"{self.class_name}.label1.{label_counter}")
 
         if self.tokenizer.current_token == "else":
             self.process(["else"])
@@ -341,10 +424,9 @@ class CompilationEngine:
             self.compile_statements()
             self.process(["}"])
 
-            self.vm_writer.write_label(f"label2.{self.label_counter}")
-
+        self.vm_writer.write_label(
+            f"{self.class_name}.label2.{label_counter}")
         self.label_counter += 1
-
 
     def compile_expression(self) -> None:  # expression
         """Compiles an expression."""
@@ -353,8 +435,13 @@ class CompilationEngine:
         # print(self.tokenizer.current_token)
         self.compile_term()
         while self.tokenizer.current_token in self.binary_ops:
-            self.compile_term()
+            # print(self.tokenizer.current_token)
+            current_operator = self.tokenizer.current_token
             self.compile_op()
+            self.compile_term()
+            # print(self.binary_operators_dict[current_operator])
+            self.vm_writer.write_arithmetic(
+                self.binary_operators_dict[current_operator])
 
     def compile_term(self) -> None:  # expression
         """Compiles a term. 
@@ -366,21 +453,15 @@ class CompilationEngine:
         to distinguish between the three possibilities. Any other token is not
         part of this term and should not be advanced over.
         """
-        # print(self.tokenizer.current_token)
-        #check if there are parentheses in the term
-        if self.tokenizer.current_token == "(":
-            self.process(["("])
-            self.compile_expression()
-            self.process([")"])
 
-        if self.tokenizer.token_type() == "INT_CONST":  #constant c
+        if self.tokenizer.token_type() == "INT_CONST":  # constant c
             # print("int const")
             self.vm_writer.write_push("constant", self.tokenizer.current_token)
             self.process([], True)
             # print(self.tokenizer.current_token)
 
 
-        elif self.tokenizer.token_type() == "STRING_CONST":  #string c
+        elif self.tokenizer.token_type() == "STRING_CONST":  # string c
             self.compile_string_const()
 
 
@@ -398,41 +479,79 @@ class CompilationEngine:
 
 
         elif self.tokenizer.current_token in ["-", "~", "^", "#"]:
-            self.compile_term()
+            current_operator = self.tokenizer.current_token
             self.compile_unary_op()
+            self.compile_term()
+            self.vm_writer.write_arithmetic(
+                self.unary_operators_dict[current_operator])
 
 
 
-        elif self.tokenizer.current_token == "(":
-            self.process(["("])
-            self.compile_expression()
-            self.process([")"])
 
+        # elif self.tokenizer.current_token == "(":
+        #     self.process(["("])
+        #     self.compile_expression()
+        #     self.process([")"])
 
-        #todo arrays and subroutine calls
+        # todo arrays and subroutine calls
         elif self.tokenizer.token_type() == "IDENTIFIER":  # varName
+            # print("blabla")
+            #
+            # print(self.tokenizer.current_token)
+            # print("blabla")
             name = self.tokenizer.current_token
             self.process([], True)
 
-            if self.tokenizer.current_token == "[": # varName[expression] - arrays
+            if self.tokenizer.current_token == "[":  # varName[expression] - arrays
                 self.process(["["])
+                try:#todo maybe problem is here pong
+                    self.vm_writer.write_push(self.kinds_dict
+                                              [self.subroutine_symbol_table.kind_of(name)],
+                                       self.subroutine_symbol_table.index_of(name))
+                except:
+                    self.vm_writer.write_push(self.kinds_dict
+                                              [self.class_symbol_table.kind_of(name)],
+                                       self.class_symbol_table.index_of(name))
                 self.compile_expression()
+                self.vm_writer.write_arithmetic("add")
+                self.vm_writer.write_pop("pointer", 1)
+                self.vm_writer.write_push("that", 0)
                 self.process(["]"])
 
 
-            elif self.tokenizer.current_token == ".": # subroutine call
-                self.compile_subroutine_call()
+            elif self.tokenizer.current_token == ".":  # subroutine call
+                self.compile_subroutine_call(name)
 
 
-            elif self.tokenizer.current_token == "(": # subroutine call
-                self.compile_subroutine_call()
+            elif self.tokenizer.current_token == "(":  # subroutine call
+                self.compile_subroutine_call(name)
+
+            else:  # end of term
+
+                try:
+                    # print("gets here!")
+                    # print(name)
+                    #todo maybe problem is here pong
+                    self.vm_writer.write_push(self.kinds_dict
+                                              [
+                                                  self.subroutine_symbol_table.kind_of(
+                                                      name)],
+                                              self.subroutine_symbol_table.index_of(
+                                                  name))
+                except:
+                    self.vm_writer.write_push(self.kinds_dict
+                                              [self.class_symbol_table.kind_of(
+                            name)],
+                                              self.class_symbol_table.index_of(
+                                                  name))
 
 
+        # check if there are parentheses in the term
         elif self.tokenizer.current_token == "(":
             self.process(["("])
             self.compile_expression()
             self.process([")"])
-
+        # print("im here!")
 
     def compile_expression_list(self) -> int:  # expression
         """Compiles a (possibly empty) comma-separated list of expressions."""
@@ -449,20 +568,18 @@ class CompilationEngine:
             counter += 1
         return counter
 
-
-
     def compile_op(self) -> None:
-        current_operator = self.tokenizer.current_token
         self.process(["+", "-", "*", "/", "&", "|", "<", ">", "="])
-        self.vm_writer.write_arithmetic(self.binary_operators_dict[current_operator])
 
     def compile_unary_op(self) -> None:
-        current_operator = self.tokenizer.current_token
         self.process(["-", "~", "^", "#"])
-        self.vm_writer.write_arithmetic(self.unary_operators_dict[current_operator])
 
     def compile_subroutine_call(self, name: str) -> None:
+        # name = self.tokenizer.current_token //todo maybe change to this?
+        # print(name)
+        # print(self.tokenizer.current_token)
         if self.tokenizer.current_token == "(":
+
             self.process(["("])
             self.vm_writer.write_push("pointer", 0)
             args = self.compile_expression_list()
@@ -470,34 +587,50 @@ class CompilationEngine:
             self.vm_writer.write_call(f"{self.class_name}.{name}", args)
             # self.process([")"])
 
+        # self.kinds_dict[self.subroutine_symbol_table.kind_of(name)],
+        # self.subroutine_symbol_table.index_of(
+        #     name))
 
         else:
+
             self.process(['.'])
             subroutine_name = self.tokenizer.current_token
+            # print(subroutine_name)
             self.process([], True)
             self.process(["("])
             # print(self.tokenizer.current_token)
 
             # func_name = self.tokenizer.current_token
             # subroutine_name = subroutine_name + "." + func_name
-            #check if the function is a method or a function
-            if name in self.class_symbol_table.my_symbol_table:
-                self.vm_writer.write_push\
-                    (self.kinds_dict[self.class_symbol_table.kind_of(name)],
-                     self.class_symbol_table.index_of(name))
-                args = self.compile_expression_list()
-                args += 1
-                self.vm_writer.write_call(f"{self.class_symbol_table.type_of(name)}."
-                                          f"{subroutine_name}", args)
-            elif name in self.subroutine_symbol_table.my_symbol_table:
-                self.vm_writer.write_push\
-                    (self.kinds_dict[self.subroutine_symbol_table.kind_of(name)],
+            # check if the function is a method or a function
+            # self.output_stream.write("problem here?\n")
+            # print(self.subroutine_symbol_table.my_symbol_table)
+            # print(self.class_symbol_table.my_symbol_table)
+            # print(name)
+            try: #todo maybe problem is here pong
+                # self.subroutine_symbol_table.my_symbol_table:
+                self.vm_writer.write_push \
+                    (self.kinds_dict[
+                         self.subroutine_symbol_table.kind_of(name)],
                      self.subroutine_symbol_table.index_of(name))
                 args = self.compile_expression_list()
                 args += 1
-                self.vm_writer.write_call(f"{self.subroutine_symbol_table.type_of(name)}."
-                                          f"{subroutine_name}", args)
-            else:
+                self.vm_writer.write_call(
+                    f"{self.subroutine_symbol_table.type_of(name)}."
+                    f"{subroutine_name}", args)
+            # except:
+            #     # self.class_symbol_table.my_symbol_table:
+            #     self.vm_writer.write_push \
+            #         (self.kinds_dict[
+            #              self.class_symbol_table.kind_of(name)],
+            #          self.class_symbol_table.index_of(name))
+            #     args = self.compile_expression_list()
+            #     args += 1
+            #     self.vm_writer.write_call(
+            #         f"{self.class_symbol_table.type_of(name)}."
+            #         f"{subroutine_name}", args)
+            except:
+                # self.output_stream.write("problem here?\n")
                 # print(self.tokenizer.current_token)
                 args = self.compile_expression_list()
                 # print(args)
@@ -505,8 +638,7 @@ class CompilationEngine:
                 self.vm_writer.write_call(f"{name}.{subroutine_name}", args)
         # print(self.tokenizer.current_token)
         self.process([")"])
-        print("got here")
-
+        # print("got here")
 
     def compile_string_const(self):
         string_length = len(self.tokenizer.current_token)
@@ -516,7 +648,3 @@ class CompilationEngine:
             self.vm_writer.write_push("constant", ord(char))
             self.vm_writer.write_call("String.appendChar", 2)
         self.process([], True)
-
-
-
-

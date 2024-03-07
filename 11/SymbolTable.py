@@ -43,8 +43,9 @@ class SymbolTable:
             "STATIC", "FIELD", "ARG", "VAR".
         """
         # Your code goes here!
-        index = self.counts[kind]
-        self.counts[kind] += 1
+        # print(self.counts)
+        index = self.counts[kind.upper()]
+        self.counts[kind.upper()] += 1
         self.my_symbol_table[name] = {"type": type, "kind": kind, "index": index}
 
     def var_count(self, kind: str) -> int:

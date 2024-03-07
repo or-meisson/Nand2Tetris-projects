@@ -50,7 +50,10 @@ class VMWriter:
             "EQ", "GT", "LT", "AND", "OR", "NOT", "SHIFTLEFT", "SHIFTRIGHT".
         """
         # Your code goes here!
-        self.output_stream.write(f"{command.lower()}\n")
+        if command == "call Math.multiply 2" or command == "call Math.divide 2":
+            self.output_stream.write(f"{command}\n")
+        else:
+            self.output_stream.write(f"{command.lower()}\n")
 
     def write_label(self, label: str) -> None:
         """Writes a VM label command.
